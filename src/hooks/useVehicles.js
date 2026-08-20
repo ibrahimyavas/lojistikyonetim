@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchVehicles, createVehicle, updateVehicle, deleteVehicle } from "../lib/api.js";
 
-export function useVehicles() {
+// `enabled` lets App.jsx defer the fetch until after login (bkz. useDrivers).
+export function useVehicles(enabled = true) {
   const [vehicles, setVehicles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState(null);
 
   const reload = useCallback(async () => {
@@ -19,8 +20,9 @@ export function useVehicles() {
   }, []);
 
   useEffect(() => {
-    reload();
-  }, [reload]);
+    if (enabled) reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, reload]);
 
   const addVehicle = useCallback(
     async (vehicle) => {

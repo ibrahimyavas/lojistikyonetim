@@ -88,3 +88,90 @@ export function updateWarehouse(id, fields) {
 export function deleteWarehouse(id) {
   return request(`/api/warehouses/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+export async function fetchShipments() {
+  const data = await request("/api/shipments");
+  return data.shipments;
+}
+
+// QR "canlı referans"ı okutunca o sevkiyatın O ANKİ halini çekmek için
+// (bkz. lib/qrPayload.js buildRouteRef/parseRouteRef) - listedeki
+// (muhtemelen bayat) yerel kopyaya değil, doğrudan sunucuya soruyoruz.
+export async function fetchShipment(id) {
+  const data = await request(`/api/shipments/${encodeURIComponent(id)}`);
+  return data.shipment;
+}
+
+export function createShipment(shipment) {
+  return request("/api/shipments", withJsonBody("POST", shipment));
+}
+
+export function updateShipment(id, fields) {
+  return request(`/api/shipments/${encodeURIComponent(id)}`, withJsonBody("PATCH", fields));
+}
+
+export function deleteShipment(id) {
+  return request(`/api/shipments/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function fetchWarehouseTransfers() {
+  const data = await request("/api/warehouse-transfers");
+  return data.transfers;
+}
+
+// fetchShipment ile aynı amaç - Depo Transferi için canlı okuma.
+export async function fetchWarehouseTransfer(id) {
+  const data = await request(`/api/warehouse-transfers/${encodeURIComponent(id)}`);
+  return data.transfer;
+}
+
+export function createWarehouseTransfer(transfer) {
+  return request("/api/warehouse-transfers", withJsonBody("POST", transfer));
+}
+
+export function updateWarehouseTransfer(id, fields) {
+  return request(`/api/warehouse-transfers/${encodeURIComponent(id)}`, withJsonBody("PATCH", fields));
+}
+
+export function deleteWarehouseTransfer(id) {
+  return request(`/api/warehouse-transfers/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function fetchWarehouseZones() {
+  const data = await request("/api/warehouse-zones");
+  return data.zones;
+}
+
+export function createWarehouseZone(zone) {
+  return request("/api/warehouse-zones", withJsonBody("POST", zone));
+}
+
+export function updateWarehouseZone(id, fields) {
+  return request(`/api/warehouse-zones/${encodeURIComponent(id)}`, withJsonBody("PATCH", fields));
+}
+
+export function deleteWarehouseZone(id) {
+  return request(`/api/warehouse-zones/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function fetchPallets() {
+  const data = await request("/api/pallets");
+  return data.pallets;
+}
+
+export function createPallet(pallet) {
+  return request("/api/pallets", withJsonBody("POST", pallet));
+}
+
+export function updatePallet(id, fields) {
+  return request(`/api/pallets/${encodeURIComponent(id)}`, withJsonBody("PATCH", fields));
+}
+
+export function deletePallet(id) {
+  return request(`/api/pallets/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function fetchPalletMovements(palletId) {
+  const data = await request(`/api/pallets/${encodeURIComponent(palletId)}/movements`);
+  return data.movements;
+}

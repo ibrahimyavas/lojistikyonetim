@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Warehouse, Plus, Pencil, Trash2, X, Search } from "lucide-react";
-import { useWarehouses } from "../hooks/useWarehouses.js";
 
 const EMPTY_FORM = { ad: "", konum: "", kapasite: "", notMetni: "" };
 
@@ -8,8 +7,11 @@ function toFormShape(w) {
   return { ad: w.ad || "", konum: w.konum || "", kapasite: w.kapasite ?? "", notMetni: w.notMetni || "" };
 }
 
-export default function WarehousesDashboard() {
-  const { warehouses, loading, error, addWarehouse, editWarehouse, removeWarehouse } = useWarehouses();
+// `warehouses` App.jsx'te tek yerden çekiliyor (bkz. useWarehouses orada) -
+// Sevkiyat/Depo Transferleri/Paletler/Depo Bölümleri ekranlarının hepsi
+// aynı listeyi kullanıyor; burada ayrıca bir hook çağrılmıyor ki bir
+// düzenleme diğer ekranlarda da anında görünsün.
+export default function WarehousesDashboard({ warehouses, loading, error, addWarehouse, editWarehouse, removeWarehouse }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);

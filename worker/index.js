@@ -9,6 +9,10 @@ import { handleDriverAuthRoute } from "./driverAuth.js";
 import { handleDriversRoute } from "./drivers.js";
 import { handleVehiclesRoute } from "./vehicles.js";
 import { handleWarehousesRoute } from "./warehouses.js";
+import { handleShipmentsRoute } from "./shipments.js";
+import { handleWarehouseTransfersRoute } from "./warehouseTransfers.js";
+import { handleWarehouseZonesRoute } from "./warehouseZones.js";
+import { handlePalletsRoute } from "./pallets.js";
 
 async function handleApi(request, env, url) {
   // Auth routes are public by definition: /api/auth/* (admin web panel,
@@ -34,6 +38,18 @@ async function handleApi(request, env, url) {
 
   const warehousesResponse = await handleWarehousesRoute(request, env, url.pathname);
   if (warehousesResponse) return warehousesResponse;
+
+  const shipmentsResponse = await handleShipmentsRoute(request, env, url.pathname);
+  if (shipmentsResponse) return shipmentsResponse;
+
+  const warehouseTransfersResponse = await handleWarehouseTransfersRoute(request, env, url.pathname);
+  if (warehouseTransfersResponse) return warehouseTransfersResponse;
+
+  const warehouseZonesResponse = await handleWarehouseZonesRoute(request, env, url.pathname);
+  if (warehouseZonesResponse) return warehouseZonesResponse;
+
+  const palletsResponse = await handlePalletsRoute(request, env, url.pathname);
+  if (palletsResponse) return palletsResponse;
 
   return json({ error: "Bulunamadı." }, { status: 404 });
 }

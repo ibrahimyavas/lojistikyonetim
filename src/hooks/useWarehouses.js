@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } from "../lib/api.js";
 
-export function useWarehouses() {
+// `enabled` lets App.jsx defer the fetch until after login (bkz. useDrivers).
+export function useWarehouses(enabled = true) {
   const [warehouses, setWarehouses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState(null);
 
   const reload = useCallback(async () => {
@@ -19,8 +20,9 @@ export function useWarehouses() {
   }, []);
 
   useEffect(() => {
-    reload();
-  }, [reload]);
+    if (enabled) reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, reload]);
 
   const addWarehouse = useCallback(
     async (warehouse) => {

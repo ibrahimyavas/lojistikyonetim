@@ -230,6 +230,10 @@ body {
   color: var(--danger-text);
 }
 
+.icon-btn.labeled {
+  white-space: nowrap;
+}
+
 .submit-btn {
   display: inline-flex;
   align-items: center;
@@ -497,4 +501,708 @@ select.status-badge {
   font: inherit;
   appearance: none;
   -webkit-appearance: none;
+}
+
+.capacity-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+}
+
+.capacity-bar {
+  width: 80px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.capacity-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.capacity-bar-fill.capacity-bar-full {
+  background: var(--danger);
+}
+
+.status-badge.status-danger {
+  color: var(--danger-text);
+  border-color: var(--danger);
+}
+
+/* Operasyon/Tanımlama grupları (bkz. App.jsx TABS[].group) arasında ince
+   bir ayraç - üst sekme şeridi tek satır pill olduğu için sidebar'daki gibi
+   metin başlığı yerine sadece görsel bir bölme. */
+.tab-btn.tab-group-start {
+  margin-left: 10px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+
+/* ---- sidebar layout (alternative to .app/.tab-nav - see useNavLayout) --- */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  align-items: flex-start;
+}
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 16px 12px;
+  transition: width 0.15s ease;
+}
+
+.sidebar.collapsed {
+  width: 64px;
+}
+
+.sidebar.collapsed .sidebar-link {
+  justify-content: center;
+  padding: 9px;
+}
+
+.sidebar.collapsed .sidebar-link > span {
+  display: none;
+}
+
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.sidebar.collapsed .sidebar-top {
+  justify-content: center;
+}
+
+.sidebar-collapse-btn {
+  flex-shrink: 0;
+}
+
+.sidebar-brand {
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Operasyon (günlük kullanım) / Tanımlama (saf veri girişi) bölümleri -
+   bkz. App.jsx TABS[].group. Operasyon önce geliyor, kullanım
+   önceliklendirmesine göre daha erişilebilir olsun diye. */
+.sidebar-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-nav-group + .sidebar-nav-group {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-group-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 0 10px 4px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-link:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.sidebar-link.active {
+  background: var(--accent-dim);
+  color: var(--accent-on-dim);
+  font-weight: 600;
+}
+
+.sidebar-footer {
+  display: flex;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.main-content {
+  /* Deliberately NOT auto-centered: with a fixed-width sidebar eating the
+     left side, centering within the *remaining* flex space still looks
+     off-center relative to the full viewport. Anchoring to the sidebar -
+     like every sidebar app does - reads as properly placed instead. */
+  flex: 1;
+  min-width: 0;
+  max-width: 1100px;
+  padding: 20px 32px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .sidebar-brand {
+    display: none;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  .sidebar-link span {
+    display: none;
+  }
+
+  .sidebar-footer {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .main-content {
+    padding: 12px 12px 32px;
+  }
+
+  /* iOS/mobil tarayıcılar bir <input>/<select> 16px'ten küçük yazı boyutuyla
+     odaklanınca tüm sayfayı otomatik yakınlaştırıyor - kameradan bir kod
+     okunduğunda liste/tablo yeniden çizilirken bu form elemanlarından biri
+     odakta kalmış olabilir. Masaüstündeki daha sık/küçük görünümü bozmadan
+     sadece mobil genişlikte tümünü 16px'e sabitliyoruz. */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ---- QR camera scanning ------------------------------------------------- */
+
+.qr-scan-toggle-row {
+  display: flex;
+}
+
+.camera-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.camera-frame {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.camera-reticle {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 38%;
+  bottom: 38%;
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* QR kodlar kare olduğu için geniş-kısa değil, kareye yakın bir kılavuz. */
+.camera-reticle-qr {
+  left: 25%;
+  right: 25%;
+  top: 20%;
+  bottom: 20%;
+}
+
+.debug-frame-preview {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 34%;
+  max-width: 160px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  padding: 4px;
+  pointer-events: none;
+}
+
+.debug-frame-preview img {
+  display: block;
+  width: 100%;
+  border-radius: 4px;
+}
+
+.debug-frame-label {
+  display: block;
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 3px;
+  text-align: center;
+}
+
+.scan-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: scan-flash 0.7s ease-out forwards;
+}
+
+@keyframes scan-flash {
+  0% {
+    box-shadow: inset 0 0 0 0 rgba(34, 197, 94, 0.55);
+  }
+  25% {
+    box-shadow: inset 0 0 0 8px rgba(34, 197, 94, 0.55);
+  }
+  100% {
+    box-shadow: inset 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+}
+
+.scan-toast {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  background: var(--good);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  max-width: 85%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  animation: scan-toast 1.4s ease-out forwards;
+}
+
+@keyframes scan-toast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+
+.camera-status {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.camera-status-error {
+  background: rgba(127, 29, 29, 0.85);
+}
+
+.camera-off {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.camera-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* ---- modal + canlı bilgi kartı ------------------------------------------ */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.modal-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.modal-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.modal-body .field {
+  width: 100%;
+}
+
+/* Sevkiyat/Depo Transferleri'nin "canlı QR" kartı - taranan referans
+   QR'ının karşılığı olan kaydı modal içinde gösterir. */
+.live-card-fields {
+  width: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.live-card-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.live-card-row dt {
+  color: var(--text-muted);
+}
+
+.live-card-row dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.live-card-location-edit {
+  display: flex;
+  gap: 8px;
+}
+
+.live-card-location-edit input,
+.live-card-location-edit select {
+  flex: 1;
+}
+
+/* ---- etiket bas / yazdırma ---------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qty-input {
+  width: 56px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.85rem;
+}
+
+.label-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  background: #fff;
+}
+
+.label-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #111;
+  text-align: center;
+}
+
+.label-route {
+  font-size: 0.68rem;
+  color: #444;
+  text-align: center;
+}
+
+.label-error {
+  color: #b91c1c;
+  font-size: 0.7rem;
+  text-align: center;
+  max-width: 140px;
+}
+
+/* Kept in the DOM at all times (not just while printing) so `window.print()`
+   works the instant you click it - but hidden on screen. The print media
+   query below swaps it back in and hides everything else. */
+.print-area {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4mm;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  .label-card {
+    width: var(--print-w, 60mm);
+    height: var(--print-h, 35mm);
+    border: 1px solid #000;
+    break-inside: avoid;
+  }
+  @page {
+    margin: 8mm;
+  }
+}
+
+/* ---- date picker ---------------------------------------------------- */
+
+.date-picker {
+  position: relative;
+}
+
+.date-picker-trigger {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.date-picker-trigger:hover {
+  border-color: var(--accent);
+}
+
+.date-picker-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  width: 240px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.date-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.date-picker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.date-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.date-picker-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.date-picker-day:hover {
+  background: var(--panel-2);
+}
+
+.date-picker-day.is-today {
+  border-color: var(--accent);
+}
+
+.date-picker-day.is-selected {
+  background: var(--accent-dim);
+  color: var(--accent-on-dim);
+  font-weight: 700;
+}
+
+.date-picker-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.date-picker-link {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.date-divider td {
+  padding: 6px 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--panel-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
 }

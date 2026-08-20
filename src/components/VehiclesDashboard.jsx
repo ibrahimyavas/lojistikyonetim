@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Truck, Plus, Pencil, Trash2, X, Search } from "lucide-react";
-import { useVehicles } from "../hooks/useVehicles.js";
 
 const EMPTY_FORM = { plaka: "", markaModel: "", durum: "aktif", surucuId: "", notMetni: "" };
 
@@ -21,8 +20,10 @@ function toFormShape(v) {
   };
 }
 
-export default function VehiclesDashboard({ drivers = [] }) {
-  const { vehicles, loading, error, addVehicle, editVehicle, removeVehicle } = useVehicles();
+// `vehicles` App.jsx'te tek yerden çekiliyor - Sevkiyat ekranının "araç
+// seç" listesi de aynı canlı veriyi kullanıyor, burada ayrıca bir hook
+// çağrılmıyor ki bir düzenleme diğer ekranlarda da anında görünsün.
+export default function VehiclesDashboard({ drivers = [], vehicles, loading, error, addVehicle, editVehicle, removeVehicle }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
