@@ -1,0 +1,6 @@
+{
+  "name": "Lojistik Yönetim",
+  "description": "Filo, sürücü, sevkiyat, depo transferleri, palet envanteri ve sürücü konum takibi yönetim sistemi.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

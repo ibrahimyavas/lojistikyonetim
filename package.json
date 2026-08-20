@@ -1,0 +1,31 @@
+{
+  "name": "lojistik",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "vite build",
+    "lint": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 3000"
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.4",
+    "express": "^5.2.1",
+    "jsbarcode": "^3.12.3",
+    "lucide-react": "^0.462.0",
+    "qr-scanner": "^1.4.2",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sql.js": "^1.14.2",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.23.12",
+    "vite": "^5.4.11",
+    "wrangler": "^4.123.0"
+  }
+}

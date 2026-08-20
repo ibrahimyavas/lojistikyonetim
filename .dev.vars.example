@@ -1,0 +1,26 @@
+# `wrangler dev` reads secrets from `.dev.vars` (gitignored) for local
+# development. Copy this file to `.dev.vars` and fill in real values:
+#
+#   cp .dev.vars.example .dev.vars
+#
+# In production these are NOT set via this file - use:
+#   npx wrangler secret put AUTH_PASSWORD
+#   npx wrangler secret put SESSION_SECRET
+
+# The one shared password that unlocks the web panel. The Android app will
+# eventually authenticate differently (per-driver token) - see README.
+AUTH_PASSWORD=degistir-bunu
+
+# Random, long, secret string used to sign session cookies. Anyone who has
+# this can forge a valid login - generate a real one, e.g.:
+#   openssl rand -base64 32
+SESSION_SECRET=uzun-rastgele-bir-metin-buraya
+
+# Sürücü (Android app) kimlik doğrulaması için - AYRI iki secret:
+# DRIVER_PIN_PEPPER, veritabanında tutulan PIN hash'lerine eklenen sabit bir
+# "tuz"; DRIVER_TOKEN_SECRET, sürücü giriş token'larını imzalar. İkisi de
+# openssl rand -base64 32 ile üretilebilir - SESSION_SECRET'la AYNI OLMASIN,
+# admin oturumlarını iptal etmek (SESSION_SECRET'ı değiştirmek) sürücü
+# token'larını etkilemesin diye.
+DRIVER_PIN_PEPPER=uzun-rastgele-baska-bir-metin-buraya
+DRIVER_TOKEN_SECRET=uzun-rastgele-yine-baska-bir-metin-buraya
