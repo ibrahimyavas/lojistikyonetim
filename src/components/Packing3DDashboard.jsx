@@ -4,7 +4,6 @@ import {
   Box,
   Layers,
   Maximize2,
-  Minimize2,
   RotateCcw,
   Truck,
   PackageCheck,
@@ -13,7 +12,6 @@ import {
   Scale,
   Sparkles,
   Save,
-  Printer,
   Info,
   CheckCircle2,
   AlertTriangle
@@ -157,10 +155,61 @@ export default function Packing3DDashboard() {
       camera.position.z = Math.max(800, Math.min(6000, camera.position.z));
     };
 
+    // Dokunmatik (telefon/tablet) desteği - depo/şoför tarafı bunu
+    // muhtemelen masaüstünden değil telefondan açacak, mouse-only kontrol
+    // orada 3D görünümü tamamen etkileşimsiz (sadece sabit bir resim)
+    // bırakırdı. Tek parmak = döndürme (mouse drag ile aynı mantık), iki
+    // parmak = kıstırma (pinch) ile yakınlaştırma (wheel ile aynı mantık).
+    let pinchStartDistance = null;
+
+    function touchDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy);
+    }
+
+    const onTouchStart = (e) => {
+      if (e.touches.length === 1) {
+        isDragging = true;
+        previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else if (e.touches.length === 2) {
+        isDragging = false;
+        pinchStartDistance = touchDistance(e.touches);
+      }
+    };
+
+    const onTouchMove = (e) => {
+      if (e.touches.length === 1 && isDragging) {
+        e.preventDefault();
+        const deltaX = e.touches[0].clientX - previousMousePosition.x;
+        const deltaY = e.touches[0].clientY - previousMousePosition.y;
+        group.rotation.y += deltaX * 0.006;
+        group.rotation.x += deltaY * 0.006;
+        previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else if (e.touches.length === 2 && pinchStartDistance != null) {
+        e.preventDefault();
+        const newDistance = touchDistance(e.touches);
+        const delta = pinchStartDistance - newDistance; // parmaklar açılırsa (yakınlaştır) negatif
+        camera.position.z += delta * 3;
+        camera.position.z = Math.max(800, Math.min(6000, camera.position.z));
+        pinchStartDistance = newDistance;
+      }
+    };
+
+    const onTouchEnd = (e) => {
+      if (e.touches.length === 0) {
+        isDragging = false;
+        pinchStartDistance = null;
+      }
+    };
+
     mount.addEventListener("mousedown", onMouseDown);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     mount.addEventListener("wheel", onWheel, { passive: false });
+    mount.addEventListener("touchstart", onTouchStart, { passive: true });
+    mount.addEventListener("touchmove", onTouchMove, { passive: false });
+    mount.addEventListener("touchend", onTouchEnd, { passive: true });
 
     // Animasyon Döngüsü
     let animationFrameId;
@@ -188,6 +237,9 @@ export default function Packing3DDashboard() {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
       mount.removeEventListener("wheel", onWheel);
+      mount.removeEventListener("touchstart", onTouchStart);
+      mount.removeEventListener("touchmove", onTouchMove);
+      mount.removeEventListener("touchend", onTouchEnd);
       if (renderer.domElement) mount.removeChild(renderer.domElement);
       renderer.dispose();
     };
@@ -341,6 +393,38 @@ export default function Packing3DDashboard() {
     }
   };
 
+  // Kayıtlı bir planı çalışma alanına geri yükler - önceden `savedPlans`
+  // çekiliyordu ama hiçbir yerde gösterilmiyordu/geri yüklenemiyordu,
+  // kaydetmenin tek yönlü (yaz ama asla oku) bir işlem olmasını düzeltiyor.
+  const handleLoadPlan = (plan) => {
+    const preset = CONTAINER_PRESETS[plan.konteynerTipi];
+    setSelectedPreset(plan.konteynerTipi);
+    setContainerSpecs({
+      ad: preset?.ad || plan.konteynerTipi,
+      uzunluk: plan.konteynerU,
+      genislik: plan.konteynerG,
+      yukseklik: plan.konteynerY,
+      maksAgirlik: plan.maksAgirlikKg,
+      aciklama: preset?.aciklama || ""
+    });
+    setLayerHeightLimit(plan.konteynerY);
+    if (plan.koliVerileri && plan.koliVerileri.length > 0) {
+      setBoxItems(plan.koliVerileri);
+    }
+    setPlanTitle(plan.baslik);
+    setActiveTab("3d_view");
+  };
+
+  const handleDeletePlan = async (id) => {
+    if (!window.confirm("Bu plan silinsin mi? Bu geri alınamaz.")) return;
+    try {
+      await deletePackingPlan(id);
+      await loadSavedPlans();
+    } catch (e) {
+      alert("Plan silinirken hata oluştu.");
+    }
+  };
+
   const metrics = packingResult?.metrics;
 
   return (
@@ -378,8 +462,32 @@ export default function Packing3DDashboard() {
         </div>
       </div>
 
+      {/* Sekmeler - 3D Görünüm / Kayıtlı Planlar */}
+      <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800">
+        <button
+          onClick={() => setActiveTab("3d_view")}
+          className={`px-4 py-2 text-xs font-medium border-b-2 -mb-px transition flex items-center gap-1.5 ${
+            activeTab === "3d_view"
+              ? "border-blue-600 text-blue-600 dark:text-blue-400"
+              : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+          }`}
+        >
+          <Box className="w-3.5 h-3.5" /> 3D Görünüm
+        </button>
+        <button
+          onClick={() => setActiveTab("saved_plans")}
+          className={`px-4 py-2 text-xs font-medium border-b-2 -mb-px transition flex items-center gap-1.5 ${
+            activeTab === "saved_plans"
+              ? "border-blue-600 text-blue-600 dark:text-blue-400"
+              : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+          }`}
+        >
+          <Save className="w-3.5 h-3.5" /> Kayıtlı Planlar ({savedPlans.length})
+        </button>
+      </div>
+
       {/* KPI Kartları */}
-      {metrics && (
+      {activeTab === "3d_view" && metrics && (
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
           <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
@@ -458,8 +566,13 @@ export default function Packing3DDashboard() {
         </div>
       )}
 
-      {/* Ana Çalışma Alanı: 3D Görünüm & Kalem Listesi */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Ana Çalışma Alanı: 3D Görünüm & Kalem Listesi - "Kayıtlı Planlar"
+          sekmesindeyken UNMOUNT edilmiyor (sadece CSS ile gizleniyor) -
+          içindeki containerMountRef Three.js renderer'ının bağlı olduğu TEK
+          DOM düğümü, unmount edilirse aşağıdaki Three.js useEffect'i
+          (yalnızca bir kez, [] bağımlılıkla çalışıyor) o düğümü asla
+          yeniden bulamaz, sekmeye geri dönünce 3D görünüm boş kalırdı. */}
+      <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 ${activeTab === "3d_view" ? "" : "hidden"}`}>
         {/* Sol Kolon: 3D WebGL Canvas (7 kolon) */}
         <div className="lg:col-span-7 bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden flex flex-col relative shadow-xl min-h-[480px]">
           {/* 3D Canvas Kontrol Araç Çubuğu */}
@@ -642,6 +755,58 @@ export default function Packing3DDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Kayıtlı Planlar - önceden `savedPlans` çekiliyordu ama hiçbir
+          yerde gösterilmiyordu; kaydetme tek yönlü (yaz ama asla oku) bir
+          işlemdi. Artık gerçek bir liste + Yükle/Sil. */}
+      {activeTab === "saved_plans" && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5">
+          {savedPlans.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-10">
+              Henüz kayıtlı bir yükleme planı yok - "3D Görünüm" sekmesinde bir plan hesaplayıp kaydedin.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {savedPlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="font-semibold text-sm text-slate-900 dark:text-white">{plan.baslik}</h4>
+                    <button
+                      onClick={() => handleDeletePlan(plan.id)}
+                      className="text-slate-400 hover:text-rose-500 transition shrink-0"
+                      title="Sil"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="mt-2 space-y-1 text-xs text-slate-500">
+                    <div className="flex items-center gap-1.5">
+                      <Info className="w-3 h-3 shrink-0" />
+                      {(CONTAINER_PRESETS[plan.konteynerTipi]?.ad || plan.konteynerTipi || "").split("(")[0]}
+                    </div>
+                    <div>Hacim doluluğu: %{plan.hacimDolulukOrani}</div>
+                    <div>
+                      Ağırlık: {(plan.toplamAgirlikKg / 1000).toFixed(1)} ton · {plan.toplamKoliSayisi} koli
+                    </div>
+                    <div className="text-slate-400">
+                      {plan.createdAt ? new Date(plan.createdAt).toLocaleDateString("tr-TR") : ""}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleLoadPlan(plan)}
+                    className="mt-3 w-full py-1.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 hover:bg-blue-100 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Bu Planı Yükle
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
