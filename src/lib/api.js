@@ -37,3 +37,54 @@ export async function fetchAuthStatus() {
   const data = await request("/api/auth/me");
   return data.authenticated;
 }
+
+export async function fetchDrivers() {
+  const data = await request("/api/drivers");
+  return data.drivers;
+}
+
+export function createDriver(driver) {
+  return request("/api/drivers", withJsonBody("POST", driver));
+}
+
+export function updateDriver(id, fields) {
+  return request(`/api/drivers/${encodeURIComponent(id)}`, withJsonBody("PATCH", fields));
+}
+
+export function deleteDriver(id) {
+  return request(`/api/drivers/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function fetchVehicles() {
+  const data = await request("/api/vehicles");
+  return data.vehicles;
+}
+
+export function createVehicle(vehicle) {
+  return request("/api/vehicles", withJsonBody("POST", vehicle));
+}
+
+export function updateVehicle(id, fields) {
+  return request(`/api/vehicles/${encodeURIComponent(id)}`, withJsonBody("PATCH", fields));
+}
+
+export function deleteVehicle(id) {
+  return request(`/api/vehicles/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function fetchWarehouses() {
+  const data = await request("/api/warehouses");
+  return data.warehouses;
+}
+
+export function createWarehouse(warehouse) {
+  return request("/api/warehouses", withJsonBody("POST", warehouse));
+}
+
+export function updateWarehouse(id, fields) {
+  return request(`/api/warehouses/${encodeURIComponent(id)}`, withJsonBody("PATCH", fields));
+}
+
+export function deleteWarehouse(id) {
+  return request(`/api/warehouses/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

@@ -1,16 +1,32 @@
 import { useCallback, useEffect, useState } from "react";
-import { LogOut, Moon, Sun, Truck } from "lucide-react";
+import { LogOut, Moon, Sun, Truck, Users, Warehouse } from "lucide-react";
 import { useTheme } from "./hooks/useTheme.js";
+import { useDrivers } from "./hooks/useDrivers.js";
 import { fetchAuthStatus, logout } from "./lib/api.js";
 import LoginGate from "./components/LoginGate.jsx";
+import DriversDashboard from "./components/DriversDashboard.jsx";
+import VehiclesDashboard from "./components/VehiclesDashboard.jsx";
+import WarehousesDashboard from "./components/WarehousesDashboard.jsx";
 
-// Skeleton only for now - barkod-okuyucu'daki auth/tema iskeletiyle birebir
-// aynı desen (kanıtlanmış). Araç/sürücü/sevkiyat modülleri şema tasarımı
-// netleştikçe buraya eklenecek (bkz. README.md).
+// Her yeni modül burada bir TABS girdisi + activeDashboard'da bir dal alır -
+// barkod-okuyucu ERP'sindeki aynı desen. Henüz gruplama (Operasyon/
+// Tanımlama) yok - sekme sayısı arttıkça eklenir.
+const TABS = [
+  { id: "vehicles", label: "Araçlar", icon: Truck },
+  { id: "drivers", label: "Sürücüler", icon: Users },
+  { id: "warehouses", label: "Depolar", icon: Warehouse },
+];
+
 export default function App() {
   const { theme, toggleTheme } = useTheme();
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [view, setView] = useState("vehicles");
+
+  // Sürücüler tek yerden çekiliyor - hem Sürücüler ekranının kendisi hem de
+  // Araçlar'ın "sürücü ata" seçicisi aynı listeyi kullanıyor.
+  const { drivers, loading: driversLoading, error: driversError, addDriver, editDriver, removeDriver } =
+    useDrivers(authenticated);
 
   useEffect(() => {
     fetchAuthStatus()
@@ -56,11 +72,31 @@ export default function App() {
         </div>
       </header>
 
-      <main className="dashboard">
-        <p className="empty-state">
-          Giriş çalışıyor. Sıradaki adım: araç/sürücü/sevkiyat şemasını tasarlayıp ilk modülü eklemek.
-        </p>
-      </main>
+      <nav className="tab-nav">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            className={`tab-btn ${view === t.id ? "active" : ""}`}
+            onClick={() => setView(t.id)}
+          >
+            <t.icon size={16} />
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {view === "vehicles" && <VehiclesDashboard drivers={drivers} />}
+      {view === "drivers" && (
+        <DriversDashboard
+          drivers={drivers}
+          loading={driversLoading}
+          error={driversError}
+          addDriver={addDriver}
+          editDriver={editDriver}
+          removeDriver={removeDriver}
+        />
+      )}
+      {view === "warehouses" && <WarehousesDashboard />}
     </div>
   );
 }
