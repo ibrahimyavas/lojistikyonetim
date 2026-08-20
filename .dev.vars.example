@@ -24,3 +24,7 @@ SESSION_SECRET=uzun-rastgele-bir-metin-buraya
 # token'larını etkilemesin diye.
 DRIVER_PIN_PEPPER=uzun-rastgele-baska-bir-metin-buraya
 DRIVER_TOKEN_SECRET=uzun-rastgele-yine-baska-bir-metin-buraya
+
+# Web paneli kullanıcı (Yönetici/Operatör) şifreleri için tuz - DRIVER_PIN_PEPPER
+# ile AYNI OLMASIN, aynı gerekçeyle.
+USER_PASSWORD_PEPPER=uzun-rastgele-bir-metin-daha-buraya

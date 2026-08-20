@@ -1,19 +1,31 @@
-// Shared-password gate for the WEB PANEL (dispatcher/admin use). Sessions
-// are a signed, stateless cookie (HMAC over an expiry timestamp) rather than
-// a DB table, so login doesn't cost a D1 round-trip on every request.
+// Web paneli kimlik doğrulaması - artık ÜÇ giriş yolu tek bir
+// `/api/auth/login` uç noktasından çözülüyor, hepsi AYNI cookie oturumunu
+// (rol taşıyan) üretiyor:
+//   1. Kullanıcı adı BOŞ + şifre AUTH_PASSWORD'e eşit -> "ana şifre" (eski
+//      davranış, DEĞİŞMEDİ) - rol: yonetici, id: yok. Bootstrap/kurtarma
+//      yolu: users tablosu boşken bile her zaman girilebilir.
+//   2. Kullanıcı adı `users.kullanici_adi` ile eşleşiyor -> şifre hash'i
+//      kontrol edilir, rol o kayıttan gelir (yonetici | operator).
+//   3. Kullanıcı adı `drivers.kod` ile eşleşiyor -> "şifre" alanı aslında
+//      PIN'dir, drivers.pin_hash ile kontrol edilir (hashPin, driverAuth.js
+//      ile PAYLAŞILAN fonksiyon - aynı PIN hem Android app'e hem web
+//      paneline giriyor) - rol: sofor, id: sürücünün id'si.
 //
-// The Android driver app will need its OWN auth (per-driver identity, not a
-// single shared password) - that's a separate scheme to design when the
-// drivers/vehicles schema is built, not this cookie gate. Don't reuse this
-// for driver-app requests.
+// Sessions are a signed, stateless cookie (HMAC over `role.id.exp`) rather
+// than a DB table, so login doesn't cost a D1 round-trip on every request -
+// tek istisna: login sırasında kimliği doğrulamak için elbette bir sorgu
+// gerekiyor, ama SONRAKİ her istekte cookie tek başına yetiyor.
 //
-// Both AUTH_PASSWORD and SESSION_SECRET are Worker secrets - never committed.
-// Local dev: put them in `.dev.vars` (gitignored, see `.dev.vars.example`).
-// Production: `wrangler secret put AUTH_PASSWORD` / `wrangler secret put SESSION_SECRET`.
+// AUTH_PASSWORD, SESSION_SECRET ve USER_PASSWORD_PEPPER Worker secret'ları -
+// never committed. Local dev: `.dev.vars` (gitignored). Production:
+// `wrangler secret put <AD>`.
 import { json } from "./utils.js";
+import { hashPin } from "./driverAuth.js";
 
 const SESSION_COOKIE = "lj_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 gün - dahili/güvenilir kullanım, sık girişe gerek yok
+
+const ROLES = new Set(["yonetici", "operator"]); // "sofor" ayrıca var ama users tablosunda bir satır değil, session'da görünür
 
 function base64UrlEncode(bytes) {
   const str = btoa(String.fromCharCode(...bytes));
@@ -30,6 +42,18 @@ async function hmac(secret, message) {
   );
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
   return base64UrlEncode(new Uint8Array(sig));
+}
+
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Kullanıcı (yönetici/operatör) şifresi için - driverAuth.js'in hashPin'iyle
+// AYNI desen ama ayrı bir pepper secret'ı ile (USER_PASSWORD_PEPPER) -
+// ikisi karışmasın, biri sızarsa diğerini etkilemesin.
+export function hashPassword(password, env) {
+  return sha256Hex(`${password}:${env.USER_PASSWORD_PEPPER || ""}`);
 }
 
 // Constant-time string compare - avoids leaking the password/signature
@@ -49,22 +73,29 @@ function getCookie(request, name) {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-async function isAuthenticated(request, env) {
+// Cookie'yi doğrular, geçerliyse { role, id } döner (id boşsa null - ana
+// şifre/master oturumu) - geçersizse/eksikse null.
+async function getSession(request, env) {
   const cookie = getCookie(request, SESSION_COOKIE);
-  if (!cookie) return false;
+  if (!cookie) return null;
   const dot = cookie.lastIndexOf(".");
-  if (dot === -1) return false;
+  if (dot === -1) return null;
   const payload = cookie.slice(0, dot);
   const sig = cookie.slice(dot + 1);
   const expected = await hmac(env.SESSION_SECRET || "", payload);
-  if (!timingSafeEqual(sig, expected)) return false;
-  const exp = Number(payload);
-  return Number.isFinite(exp) && Date.now() < exp;
+  if (!timingSafeEqual(sig, expected)) return null;
+
+  const parts = payload.split(".");
+  if (parts.length !== 3) return null;
+  const [role, id, expStr] = parts;
+  const exp = Number(expStr);
+  if (!Number.isFinite(exp) || Date.now() >= exp) return null;
+  return { role, id: id || null };
 }
 
-async function sessionCookieHeader(env, secure) {
+async function sessionCookieHeader(env, secure, role, id) {
   const exp = Date.now() + SESSION_MAX_AGE_SECONDS * 1000;
-  const payload = String(exp);
+  const payload = `${role}.${id || ""}.${exp}`;
   const sig = await hmac(env.SESSION_SECRET || "", payload);
   return `${SESSION_COOKIE}=${payload}.${sig}; HttpOnly; Path=/; Max-Age=${SESSION_MAX_AGE_SECONDS}; SameSite=Lax${secure ? "; Secure" : ""}`;
 }
@@ -73,10 +104,15 @@ function clearedSessionCookieHeader(secure) {
   return `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${secure ? "; Secure" : ""}`;
 }
 
-// Called by index.js before dispatching to any non-auth route. Returns a 401
-// Response to short-circuit the request, or null if the caller may proceed.
+// Called by index.js before dispatching to any non-auth route. Returns
+// { session, error } - error is a 401 Response if not authenticated (caller
+// should return it as-is), session is { role, id } otherwise. Route
+// gruplarının rol bazlı erişim kararları worker/index.js'te session.role'e
+// bakarak veriliyor.
 export async function requireAuth(request, env) {
-  return (await isAuthenticated(request, env)) ? null : json({ error: "Giriş gerekli." }, { status: 401 });
+  const session = await getSession(request, env);
+  if (!session) return { session: null, error: json({ error: "Giriş gerekli." }, { status: 401 }) };
+  return { session, error: null };
 }
 
 // Handles /api/auth/*. Returns a Response if it owns this route, or null so
@@ -91,15 +127,51 @@ export async function handleAuthRoute(request, env, url) {
     } catch {
       return json({ error: "Geçersiz istek." }, { status: 400 });
     }
-    const expected = env.AUTH_PASSWORD || "";
-    if (!expected) {
-      return json({ error: "Sunucuda AUTH_PASSWORD tanımlı değil." }, { status: 500 });
-    }
+    const kullaniciAdi = String(body.username ?? "").trim();
     const submitted = String(body.password ?? "");
-    if (!submitted || !timingSafeEqual(submitted, expected)) {
-      return json({ error: "Şifre yanlış." }, { status: 401 });
+    if (!submitted) return json({ error: "Şifre zorunlu." }, { status: 401 });
+
+    // 1. Kullanıcı adı boşsa: ana şifre (eski davranış, bootstrap/kurtarma).
+    if (!kullaniciAdi) {
+      const expected = env.AUTH_PASSWORD || "";
+      if (!expected) return json({ error: "Sunucuda AUTH_PASSWORD tanımlı değil." }, { status: 500 });
+      if (!timingSafeEqual(submitted, expected)) {
+        return json({ error: "Şifre yanlış." }, { status: 401 });
+      }
+      return json(
+        { ok: true, role: "yonetici", id: null },
+        { headers: { "Set-Cookie": await sessionCookieHeader(env, secure, "yonetici", "") } }
+      );
     }
-    return json({ ok: true }, { headers: { "Set-Cookie": await sessionCookieHeader(env, secure) } });
+
+    // 2. Kullanıcı adı users tablosunda mı?
+    const user = await env.DB.prepare("SELECT * FROM users WHERE kullanici_adi = ?1").bind(kullaniciAdi).first();
+    if (user && user.aktif) {
+      const hash = await hashPassword(submitted, env);
+      if (timingSafeEqual(hash, user.sifre_hash)) {
+        return json(
+          { ok: true, role: user.rol, id: user.id, ad: user.ad },
+          { headers: { "Set-Cookie": await sessionCookieHeader(env, secure, user.rol, user.id) } }
+        );
+      }
+      return json({ error: "Kullanıcı adı veya şifre yanlış." }, { status: 401 });
+    }
+
+    // 3. Kullanıcı adı bir sürücü kodu mu? (aynı kod+PIN, Android app'le
+    // paylaşılan - bkz. driverAuth.js handleDriverAuthRoute)
+    const driver = await env.DB.prepare("SELECT * FROM drivers WHERE kod = ?1").bind(kullaniciAdi).first();
+    if (driver && driver.aktif) {
+      const hash = await hashPin(submitted, env);
+      if (timingSafeEqual(hash, driver.pin_hash)) {
+        return json(
+          { ok: true, role: "sofor", id: driver.id, ad: driver.ad },
+          { headers: { "Set-Cookie": await sessionCookieHeader(env, secure, "sofor", driver.id) } }
+        );
+      }
+      return json({ error: "Kullanıcı adı veya şifre yanlış." }, { status: 401 });
+    }
+
+    return json({ error: "Kullanıcı adı veya şifre yanlış." }, { status: 401 });
   }
 
   if (url.pathname === "/api/auth/logout" && request.method === "POST") {
@@ -107,8 +179,12 @@ export async function handleAuthRoute(request, env, url) {
   }
 
   if (url.pathname === "/api/auth/me" && request.method === "GET") {
-    return json({ authenticated: await isAuthenticated(request, env) });
+    const session = await getSession(request, env);
+    if (!session) return json({ authenticated: false });
+    return json({ authenticated: true, role: session.role, id: session.id });
   }
 
   return null;
 }
+
+export { ROLES };

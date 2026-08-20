@@ -3,6 +3,11 @@ import { json } from "./utils.js";
 const DIRECTIONS = new Set(["giden", "gelen"]);
 const STATUSES = new Set(["planlandi", "yolda", "teslim_edildi", "iptal"]);
 
+// Şoför rolü kendi sevkiyatını güncellerken SADECE bu alanları
+// değiştirebilir - taraf/araç/teslim bilgilerini yeniden atayamaz, sadece
+// durumunu ilerletebilir ve not düşebilir.
+const SOFOR_EDITABLE_FIELDS = new Set(["durum", "notMetni"]);
+
 function shipmentRow(row) {
   return {
     id: row.id,
@@ -25,7 +30,15 @@ function shipmentRow(row) {
   };
 }
 
-async function listShipments(env) {
+// Şoför sadece KENDİ (surucu_id = session.id) sevkiyatlarını görür -
+// başka bir sürücünün sevkiyatı listede/detayda hiç görünmez.
+async function listShipments(env, session) {
+  if (session.role === "sofor") {
+    const { results } = await env.DB.prepare("SELECT * FROM shipments WHERE surucu_id = ?1 ORDER BY created_at DESC")
+      .bind(session.id)
+      .all();
+    return json({ shipments: results.map(shipmentRow) });
+  }
   const { results } = await env.DB.prepare("SELECT * FROM shipments ORDER BY created_at DESC").all();
   return json({ shipments: results.map(shipmentRow) });
 }
@@ -34,13 +47,22 @@ async function listShipments(env) {
 // (bkz. src/lib/qrPayload.js buildRouteRef/parseRouteRef): basılan etiket
 // sadece bu ID'yi taşıyor, her okutmada buraya sorulup en güncel durum/
 // güzergah gösteriliyor.
-async function getShipment(env, id) {
+async function getShipment(env, id, session) {
   const row = await env.DB.prepare("SELECT * FROM shipments WHERE id = ?1").bind(id).first();
   if (!row) return json({ error: "Sevkiyat bulunamadı." }, { status: 404 });
+  if (session.role === "sofor" && row.surucu_id !== session.id) {
+    return json({ error: "Bu sevkiyat size ait değil." }, { status: 403 });
+  }
   return json({ shipment: shipmentRow(row) });
 }
 
-async function createShipment(request, env) {
+async function createShipment(request, env, session) {
+  // Şoför yeni sevkiyat oluşturamaz - sadece kendisine atanmış olanları
+  // yönetebilir.
+  if (session.role === "sofor") {
+    return json({ error: "Bu işlem için yetkiniz yok." }, { status: 403 });
+  }
+
   let body;
   try {
     body = await request.json();
@@ -86,12 +108,27 @@ async function createShipment(request, env) {
   return json({ id, createdAt: now }, { status: 201 });
 }
 
-async function updateShipment(request, env, id) {
+async function updateShipment(request, env, id, session) {
+  const current = await env.DB.prepare("SELECT * FROM shipments WHERE id = ?1").bind(id).first();
+  if (!current) return json({ error: "Sevkiyat bulunamadı." }, { status: 404 });
+  if (session.role === "sofor" && current.surucu_id !== session.id) {
+    return json({ error: "Bu sevkiyat size ait değil." }, { status: 403 });
+  }
+
   let body;
   try {
     body = await request.json();
   } catch {
     return json({ error: "Geçersiz istek gövdesi." }, { status: 400 });
+  }
+
+  if (session.role === "sofor") {
+    const attemptedExtra = Object.keys(body).some(
+      (key) => key !== "gerceklesenTarih" && key !== "tarih" && !SOFOR_EDITABLE_FIELDS.has(key)
+    );
+    if (attemptedExtra) {
+      return json({ error: "Sadece durum ve not güncelleyebilirsiniz." }, { status: 403 });
+    }
   }
 
   if (body.durum != null && !STATUSES.has(body.durum)) {
@@ -105,11 +142,8 @@ async function updateShipment(request, env, id) {
   // "Düzenle") her seferinde gerceklesen_tarih bugüne SIFIRLANIR - gerçek
   // teslim tarihi sessizce kaybolurdu. Sadece GERÇEK bir geçişte dolduruyoruz.
   let gerceklesenTarih = body.gerceklesenTarih;
-  if (body.durum === "teslim_edildi" && !gerceklesenTarih) {
-    const current = await env.DB.prepare("SELECT durum FROM shipments WHERE id = ?1").bind(id).first();
-    if (current && current.durum !== "teslim_edildi") {
-      gerceklesenTarih = new Date().toISOString().slice(0, 10);
-    }
+  if (body.durum === "teslim_edildi" && !gerceklesenTarih && current.durum !== "teslim_edildi") {
+    gerceklesenTarih = new Date().toISOString().slice(0, 10);
   }
 
   const sets = [];
@@ -154,28 +188,35 @@ async function updateShipment(request, env, id) {
   return json({ ok: true, gerceklesenTarih });
 }
 
-async function deleteShipment(env, id) {
+async function deleteShipment(env, id, session) {
+  if (session.role === "sofor") {
+    return json({ error: "Bu işlem için yetkiniz yok." }, { status: 403 });
+  }
   await env.DB.prepare("DELETE FROM shipments WHERE id = ?1").bind(id).run();
   return json({ ok: true });
 }
 
 // Handles /api/shipments*. Returns a Response if it owns this route, or
-// null so the caller can fall through to other route handlers.
-export async function handleShipmentsRoute(request, env, pathname) {
+// null so the caller can fall through to other route handlers. `session`
+// (bkz. worker/auth.js) rol bazlı filtreleme/sahiplik kontrolü için - bu
+// modül kendi kapısını kendi yönetiyor (worker/index.js'in ROUTE_GROUPS
+// tablosunda YOK), çünkü Şoför erişimi "hepsi ya da hiçbiri" değil,
+// "sadece kendi sevkiyatları" şeklinde satır bazlı.
+export async function handleShipmentsRoute(request, env, pathname, session) {
   if (pathname === "/api/shipments") {
-    if (request.method === "GET") return listShipments(env);
-    if (request.method === "POST") return createShipment(request, env);
+    if (request.method === "GET") return listShipments(env, session);
+    if (request.method === "POST") return createShipment(request, env, session);
   }
 
   const match = pathname.match(/^\/api\/shipments\/([^/]+)$/);
   if (match && request.method === "GET") {
-    return getShipment(env, match[1]);
+    return getShipment(env, match[1], session);
   }
   if (match && request.method === "PATCH") {
-    return updateShipment(request, env, match[1]);
+    return updateShipment(request, env, match[1], session);
   }
   if (match && request.method === "DELETE") {
-    return deleteShipment(env, match[1]);
+    return deleteShipment(env, match[1], session);
   }
 
   return null;

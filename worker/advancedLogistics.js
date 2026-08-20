@@ -202,7 +202,21 @@ export async function deletePackingPlan(env, id) {
 }
 
 // Proof of Delivery (e-POD)
-export async function getProofOfDelivery(env, shipmentId) {
+// `session` (bkz. worker/auth.js) Şoför rolü için sahiplik kontrolü
+// yapıyor - kendi sevkiyatı olmayan bir e-POD'a erişemez/gönderemez.
+async function assertShipmentOwnership(env, shipmentId, session) {
+  if (session.role !== "sofor") return null;
+  const shipment = await env.DB.prepare("SELECT surucu_id FROM shipments WHERE id = ?1").bind(shipmentId).first();
+  if (!shipment || shipment.surucu_id !== session.id) {
+    return json({ error: "Bu sevkiyat size ait değil." }, { status: 403 });
+  }
+  return null;
+}
+
+export async function getProofOfDelivery(env, shipmentId, session) {
+  const ownershipError = await assertShipmentOwnership(env, shipmentId, session);
+  if (ownershipError) return ownershipError;
+
   const row = await env.DB.prepare(
     "SELECT * FROM proof_of_deliveries WHERE shipment_id = ?1 ORDER BY created_at DESC"
   ).bind(shipmentId).first();
@@ -229,7 +243,7 @@ export async function getProofOfDelivery(env, shipmentId) {
   });
 }
 
-export async function submitProofOfDelivery(request, env) {
+export async function submitProofOfDelivery(request, env, session) {
   let body;
   try {
     body = await request.json();
@@ -240,6 +254,10 @@ export async function submitProofOfDelivery(request, env) {
   if (!body.shipmentId) {
     return json({ error: "Sevkiyat ID zorunludur." }, { status: 400 });
   }
+
+  const ownershipError = await assertShipmentOwnership(env, body.shipmentId, session);
+  if (ownershipError) return ownershipError;
+
   if (!body.aliciAdSoyad) {
     return json({ error: "Teslim alan ad soyad zorunludur." }, { status: 400 });
   }

@@ -55,5 +55,5 @@ export function useShipments() {
     [shipments]
   );
 
-  return { shipments, loading, error, addShipment, updateOne, removeShipment };
+  return { shipments, loading, error, addShipment, updateOne, removeShipment, reload };
 }

@@ -14,6 +14,7 @@ import { handleWarehouseTransfersRoute } from "./warehouseTransfers.js";
 import { handleWarehouseZonesRoute } from "./warehouseZones.js";
 import { handlePalletsRoute } from "./pallets.js";
 import { handleDriverLocationsRoute, handleAdminLocationsRoute } from "./driverLocations.js";
+import { handleUsersRoute } from "./users.js";
 import {
   listOptimizedRoutes,
   createOptimizedRoute,
@@ -25,8 +26,45 @@ import {
   submitProofOfDelivery
 } from "./advancedLogistics.js";
 
-async function handleAdvancedRoutes(request, env, pathname) {
-  // Routes
+function isReadOnlyMethod(method) {
+  return method === "GET" || method === "HEAD";
+}
+
+function pathIn(pathname, prefix) {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+// Rol bazlı erişim matrisi - her route grubu için hangi rollerin hangi
+// HTTP metodlarıyla erişebileceği. GATE-BEFORE-DISPATCH: her grup için önce
+// pathname öneki kontrol edilip rol izin vermiyorsa handler HİÇ
+// ÇAĞRILMADAN 403 dönülüyor - aksi halde (önce çağırıp sonucu atma gibi)
+// bir POST/PATCH/DELETE, engellenmeden ÖNCE veritabanını değiştirebilirdi.
+//
+// "sofor" burada hiçbir grupta YOK - şoförün tek erişimi shipments (kendi
+// sevkiyatları, worker/shipments.js session alıp filtreliyor/sahiplik
+// kontrolü yapıyor) ve pod (aşağıda, sahiplik kontrolüyle); listedeki
+// gruplardan hiçbirine giremiyor.
+const ROUTE_GROUPS = [
+  { prefix: "/api/drivers", access: { yonetici: "full", operator: "read" }, handler: handleDriversRoute },
+  { prefix: "/api/vehicles", access: { yonetici: "full", operator: "read" }, handler: handleVehiclesRoute },
+  { prefix: "/api/warehouses", access: { yonetici: "full", operator: "read" }, handler: handleWarehousesRoute },
+  { prefix: "/api/warehouse-zones", access: { yonetici: "full", operator: "read" }, handler: handleWarehouseZonesRoute },
+  { prefix: "/api/warehouse-transfers", access: { yonetici: "full", operator: "full" }, handler: handleWarehouseTransfersRoute },
+  { prefix: "/api/pallets", access: { yonetici: "full", operator: "full" }, handler: handlePalletsRoute },
+  { prefix: "/api/driver-locations", access: { yonetici: "full", operator: "full" }, handler: handleAdminLocationsRoute },
+  { prefix: "/api/users", access: { yonetici: "full" }, handler: handleUsersRoute },
+  { prefix: "/api/routes", access: { yonetici: "full" }, handler: (req, env, path) => handleAdvancedRoutes(req, env, path) },
+  { prefix: "/api/packing-plans", access: { yonetici: "full" }, handler: (req, env, path) => handleAdvancedRoutes(req, env, path) },
+];
+
+function roleAllowed(access, role, method) {
+  const level = access[role];
+  if (level === "full") return true;
+  if (level === "read" && isReadOnlyMethod(method)) return true;
+  return false;
+}
+
+async function handleAdvancedRoutes(request, env, pathname, session) {
   if (pathname === "/api/routes" && request.method === "GET") {
     return listOptimizedRoutes(env);
   }
@@ -38,7 +76,6 @@ async function handleAdvancedRoutes(request, env, pathname) {
     return deleteOptimizedRoute(env, routeDelMatch[1]);
   }
 
-  // 3D Packing Plans
   if (pathname === "/api/packing-plans" && request.method === "GET") {
     return listPackingPlans(env);
   }
@@ -50,13 +87,17 @@ async function handleAdvancedRoutes(request, env, pathname) {
     return deletePackingPlan(env, planDelMatch[1]);
   }
 
-  // ePOD
+  // e-POD - Yönetici/Operatör serbest, Şoför sadece KENDİ sevkiyatı için
+  // (bkz. advancedLogistics.js submitProofOfDelivery/getProofOfDelivery'nin
+  // session parametresiyle yaptığı sahiplik kontrolü) - bu ikisi
+  // ROUTE_GROUPS'ta YOK, "advanced" grubunun Yönetici-only kapısından
+  // MUAF, ayrı ele alınıyor (aşağıda handleApi'de).
   if (pathname === "/api/pod" && request.method === "POST") {
-    return submitProofOfDelivery(request, env);
+    return submitProofOfDelivery(request, env, session);
   }
   const podMatch = pathname.match(/^\/api\/shipments\/([^\/]+)\/pod$/);
   if (podMatch && request.method === "GET") {
-    return getProofOfDelivery(env, podMatch[1]);
+    return getProofOfDelivery(env, podMatch[1], session);
   }
 
   return null;
@@ -64,8 +105,9 @@ async function handleAdvancedRoutes(request, env, pathname) {
 
 async function handleApi(request, env, url) {
   // Auth routes are public by definition: /api/auth/* (admin web panel,
-  // cookie session) and /api/driver-auth/login (Android sürücü app, Bearer
-  // token - bkz. driverAuth.js, admin panelinden AYRI bir kimlik doğrulama).
+  // cookie session - artık üç rol de buradan giriyor, bkz. auth.js) ve
+  // /api/driver-auth/login (Android sürücü app, Bearer token - bkz.
+  // driverAuth.js, admin panelinden AYRI bir kimlik doğrulama).
   const authResponse = await handleAuthRoute(request, env, url);
   if (authResponse) return authResponse;
 
@@ -80,35 +122,33 @@ async function handleApi(request, env, url) {
 
   // Aşağıdaki route'ların hepsi admin panelinin (cookie) oturumunu
   // gerektiriyor.
-  const authError = await requireAuth(request, env);
+  const { session, error: authError } = await requireAuth(request, env);
   if (authError) return authError;
 
-  const driversResponse = await handleDriversRoute(request, env, url.pathname);
-  if (driversResponse) return driversResponse;
+  // e-POD, ROUTE_GROUPS'taki "/api/routes"/"/api/packing-plans" önekleriyle
+  // ÇAKIŞMIYOR (/api/pod, /api/shipments/:id/pod) - bu yüzden gruplardan
+  // ÖNCE, kendi sahiplik mantığıyla ayrı ele alınıyor.
+  const isPodPath = url.pathname === "/api/pod" || /^\/api\/shipments\/[^/]+\/pod$/.test(url.pathname);
+  if (isPodPath) {
+    const podResponse = await handleAdvancedRoutes(request, env, url.pathname, session);
+    if (podResponse) return podResponse;
+  }
 
-  const vehiclesResponse = await handleVehiclesRoute(request, env, url.pathname);
-  if (vehiclesResponse) return vehiclesResponse;
+  for (const group of ROUTE_GROUPS) {
+    if (!pathIn(url.pathname, group.prefix)) continue;
+    if (!roleAllowed(group.access, session.role, request.method)) {
+      return json({ error: "Bu işlem için yetkiniz yok." }, { status: 403 });
+    }
+    const response = await group.handler(request, env, url.pathname, session);
+    if (response) return response;
+  }
 
-  const warehousesResponse = await handleWarehousesRoute(request, env, url.pathname);
-  if (warehousesResponse) return warehousesResponse;
-
-  const shipmentsResponse = await handleShipmentsRoute(request, env, url.pathname);
+  // Sevkiyat - Yönetici/Operatör tam erişim, Şoför SADECE kendi sevkiyatları
+  // (worker/shipments.js session'ı alıp GET'i filtreliyor, PATCH'te
+  // sahiplik kontrolü yapıyor) - rol gruplarında YOK, session doğrudan
+  // handler'a geçip kararı orada veriyor.
+  const shipmentsResponse = await handleShipmentsRoute(request, env, url.pathname, session);
   if (shipmentsResponse) return shipmentsResponse;
-
-  const warehouseTransfersResponse = await handleWarehouseTransfersRoute(request, env, url.pathname);
-  if (warehouseTransfersResponse) return warehouseTransfersResponse;
-
-  const warehouseZonesResponse = await handleWarehouseZonesRoute(request, env, url.pathname);
-  if (warehouseZonesResponse) return warehouseZonesResponse;
-
-  const palletsResponse = await handlePalletsRoute(request, env, url.pathname);
-  if (palletsResponse) return palletsResponse;
-
-  const adminLocationsResponse = await handleAdminLocationsRoute(request, env, url.pathname);
-  if (adminLocationsResponse) return adminLocationsResponse;
-
-  const advancedResponse = await handleAdvancedRoutes(request, env, url.pathname);
-  if (advancedResponse) return advancedResponse;
 
   return json({ error: "Bulunamadı." }, { status: 404 });
 }

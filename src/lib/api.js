@@ -25,17 +25,39 @@ export function withJsonBody(method, body) {
   return { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
 }
 
-export function login(password) {
-  return request("/api/auth/login", withJsonBody("POST", { password }));
+// `username` boş bırakılırsa ana şifre (AUTH_PASSWORD) ile giriş - eski
+// davranış, bootstrap/kurtarma yolu. Doluysa ya bir users.kullanici_adi
+// (Yönetici/Operatör) ya da bir drivers.kod (Şoför, aynı Android app
+// kod+PIN'i) ile eşleştirilmeye çalışılıyor - bkz. worker/auth.js.
+export function login(username, password) {
+  return request("/api/auth/login", withJsonBody("POST", { username, password }));
 }
 
 export function logout() {
   return request("/api/auth/logout", { method: "POST" });
 }
 
-export async function fetchAuthStatus() {
-  const data = await request("/api/auth/me");
-  return data.authenticated;
+// { authenticated, role, id } döner - role: "yonetici" | "operator" | "sofor",
+// id: users.id ya da drivers.id (ana şifreyle girildiyse null).
+export async function fetchSession() {
+  return request("/api/auth/me");
+}
+
+export async function fetchUsers() {
+  const data = await request("/api/users");
+  return data.users;
+}
+
+export function createUser(user) {
+  return request("/api/users", withJsonBody("POST", user));
+}
+
+export function updateUser(id, fields) {
+  return request(`/api/users/${encodeURIComponent(id)}`, withJsonBody("PATCH", fields));
+}
+
+export function deleteUser(id) {
+  return request(`/api/users/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 export async function fetchDrivers() {
