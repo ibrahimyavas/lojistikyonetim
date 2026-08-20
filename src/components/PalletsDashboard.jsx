@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import { Boxes, Plus, Trash2, Search, LogOut, History, ArrowRightLeft, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Boxes, Plus, Trash2, Search, LogOut, History, ArrowRightLeft, X, Sparkles } from "lucide-react";
 import { usePallets } from "../hooks/usePallets.js";
 import { todayISO, trDate } from "../lib/format.js";
+import { suggestZoneForProduct } from "../lib/slottingAlgorithms.js";
 import DatePicker from "./DatePicker.jsx";
 import Modal from "./Modal.jsx";
 
@@ -49,13 +50,41 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
   const [movements, setMovements] = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
 
+  // Bölüm otomatik önerildiğinde true - kullanıcı elle bölüm seçerse ya da
+  // ürün/depo değişip yeni bir öneri beklenirken false'a döner. Sadece
+  // arayüzde "✨ Otomatik önerildi" rozetini göstermek için, veriyi
+  // etkilemiyor.
+  const [zoneAutoFilled, setZoneAutoFilled] = useState(false);
+
   function updateField(field, value) {
     setForm((f) => {
       const next = { ...f, [field]: value };
       if (field === "warehouseId") next.zoneId = ""; // depo değişince bölüm seçimi sıfırlanır
       return next;
     });
+    if (field === "zoneId" || field === "warehouseId") setZoneAutoFilled(false);
   }
+
+  // OTOMATIK BÖLÜM ÖNERİSİ: ürün adı + depo girildiğinde ve bölüm henüz
+  // seçilmemişken, ABC hız sınıfına ve mevcut doluluğa göre en uygun boş
+  // bölümü otomatik doldurur (bkz. lib/slottingAlgorithms.js
+  // suggestZoneForProduct). Kullanıcı isterse açılır menüden değiştirebilir
+  // - hiçbir zaman elle yapılmış bir seçimin üzerine yazmaz.
+  useEffect(() => {
+    const urunAdi = form.urunAdi.trim();
+    if (!urunAdi || !form.warehouseId || form.zoneId) return;
+    const suggestion = suggestZoneForProduct(urunAdi, pallets, zones, form.warehouseId);
+    if (!suggestion) return;
+    setForm((f) => (f.zoneId || f.warehouseId !== suggestion.zone.warehouseId ? f : { ...f, zoneId: suggestion.zoneId }));
+    setZoneAutoFilled(true);
+  }, [form.urunAdi, form.warehouseId, form.zoneId, pallets, zones]);
+
+  const zoneSuggestionLabel = useMemo(() => {
+    if (!zoneAutoFilled || !form.zoneId) return null;
+    const zone = zones.find((z) => z.id === form.zoneId);
+    if (!zone) return null;
+    return `${zone.kod}${zone.ad ? ` (${zone.ad})` : ""}`;
+  }, [zoneAutoFilled, form.zoneId, zones]);
 
   const warehouseName = useMemo(() => {
     const byId = new Map(warehouses.map((w) => [w.id, w.ad]));
@@ -149,6 +178,7 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
         notMetni: form.notMetni.trim(),
       });
       setForm({ ...EMPTY_FORM, warehouseId: form.warehouseId, zoneId: form.zoneId, tarih: form.tarih });
+      setZoneAutoFilled(false);
     } catch (err) {
       setSubmitError(err.message);
     } finally {
@@ -255,6 +285,15 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
               </option>
             ))}
           </select>
+          {zoneSuggestionLabel && (
+            <span
+              className="status-badge status-good"
+              style={{ cursor: "default", alignSelf: "flex-start" }}
+              title="Ürünün hız sınıfına ve bölüm doluluğuna göre otomatik seçildi, dilerseniz değiştirebilirsiniz."
+            >
+              <Sparkles size={12} style={{ marginRight: 4 }} /> Otomatik önerildi: {zoneSuggestionLabel}
+            </span>
+          )}
         </div>
 
         <div className="field">

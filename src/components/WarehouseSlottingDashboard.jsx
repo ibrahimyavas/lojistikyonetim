@@ -55,12 +55,16 @@ export default function WarehouseSlottingDashboard() {
     }
   };
 
+  // NOT: API camelCase döndürüyor (warehouseId) - burada önceden
+  // `p.warehouse_id`/`z.warehouse_id` kontrol ediliyordu, hep undefined
+  // olduğu için bir depo seçiliyken (varsayılan olarak hep seçili) bu iki
+  // liste de HER ZAMAN boş kalıyor, tüm sekme fiilen boş görünüyordu.
   const filteredPallets = selectedWarehouseId
-    ? pallets.filter((p) => p.warehouse_id === selectedWarehouseId)
+    ? pallets.filter((p) => p.warehouseId === selectedWarehouseId)
     : pallets;
 
   const filteredZones = selectedWarehouseId
-    ? zones.filter((z) => z.warehouse_id === selectedWarehouseId)
+    ? zones.filter((z) => z.warehouseId === selectedWarehouseId)
     : zones;
 
   const abcAnalysis = calculateAbcVelocityAnalysis(filteredPallets);
@@ -254,7 +258,7 @@ export default function WarehouseSlottingDashboard() {
                 >
                   <div>
                     <div className="font-bold text-slate-900 dark:text-white">{p.kod}</div>
-                    <div className="text-[11px] text-slate-500">{p.urun_adi}</div>
+                    <div className="text-[11px] text-slate-500">{p.urunAdi}</div>
                     <div className="text-[10px] text-slate-400 font-mono mt-0.5">
                       {p.miktar} {p.birim}
                     </div>

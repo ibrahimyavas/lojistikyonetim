@@ -7,6 +7,9 @@ function zoneRow(row) {
     kod: row.kod,
     ad: row.ad,
     kapasite: row.kapasite,
+    // A/B/C hız sınıfı (bkz. migrations/0007_zone_sinif.sql) - null olabilir,
+    // henüz sınıflandırılmamış demektir.
+    sinif: row.sinif,
     // Depoda (durum='depoda') olan ve bu bölüme yerleştirilmiş PALET SAYISI
     // (miktar toplamı DEĞİL - paletlerin miktar/birim'i karışık olabilir,
     // ör. bir palet 50 kg bir palet 30 adet, toplamak anlamsız bir sayı
@@ -47,15 +50,20 @@ async function createZone(request, env) {
     return json({ error: "Kapasite geçerli bir sayı olmalı." }, { status: 400 });
   }
 
+  const sinif = String(body.sinif ?? "").trim().toUpperCase() || null;
+  if (sinif != null && !["A", "B", "C"].includes(sinif)) {
+    return json({ error: "Sınıf A, B ya da C olmalı." }, { status: 400 });
+  }
+
   const id = crypto.randomUUID();
   const now = Date.now();
 
   try {
     await env.DB.prepare(
-      `INSERT INTO warehouse_zones (id, warehouse_id, kod, ad, kapasite, not_metni, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+      `INSERT INTO warehouse_zones (id, warehouse_id, kod, ad, kapasite, sinif, not_metni, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`
     )
-      .bind(id, warehouseId, kod, String(body.ad ?? "").trim() || null, kapasite, String(body.notMetni ?? "").trim() || null, now)
+      .bind(id, warehouseId, kod, String(body.ad ?? "").trim() || null, kapasite, sinif, String(body.notMetni ?? "").trim() || null, now)
       .run();
   } catch (err) {
     if (/FOREIGN KEY constraint failed/i.test(err?.message || "")) {
@@ -102,6 +110,14 @@ async function updateZone(request, env, id) {
     }
     sets.push(`kapasite = ?${idx++}`);
     values.push(kapasite);
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "sinif")) {
+    const sinif = String(body.sinif ?? "").trim().toUpperCase() || null;
+    if (sinif != null && !["A", "B", "C"].includes(sinif)) {
+      return json({ error: "Sınıf A, B ya da C olmalı." }, { status: 400 });
+    }
+    sets.push(`sinif = ?${idx++}`);
+    values.push(sinif);
   }
   if (Object.prototype.hasOwnProperty.call(body, "notMetni")) {
     sets.push(`not_metni = ?${idx++}`);

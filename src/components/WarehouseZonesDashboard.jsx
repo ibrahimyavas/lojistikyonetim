@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 import { LayoutGrid, Plus, Pencil, Trash2, X, Search } from "lucide-react";
 
-const EMPTY_FORM = { warehouseId: "", kod: "", ad: "", kapasite: "", notMetni: "" };
+const EMPTY_FORM = { warehouseId: "", kod: "", ad: "", kapasite: "", sinif: "", notMetni: "" };
+
+const SINIF_LABEL = {
+  A: "A - Hızlı Sirkülasyon",
+  B: "B - Standart",
+  C: "C - Yavaş / Arka Blok",
+};
 
 function toFormShape(z) {
   return {
@@ -9,6 +15,7 @@ function toFormShape(z) {
     kod: z.kod || "",
     ad: z.ad || "",
     kapasite: z.kapasite ?? "",
+    sinif: z.sinif || "",
     notMetni: z.notMetni || "",
   };
 }
@@ -65,6 +72,7 @@ export default function WarehouseZonesDashboard({ warehouses = [], zones, loadin
       kod,
       ad: form.ad.trim(),
       kapasite: form.kapasite === "" ? null : Number(form.kapasite),
+      sinif: form.sinif || "",
       notMetni: form.notMetni.trim(),
     };
     try {
@@ -130,6 +138,16 @@ export default function WarehouseZonesDashboard({ warehouses = [], zones, loadin
           />
         </div>
 
+        <div className="field">
+          <label htmlFor="wz-sinif">Hız Sınıfı (opsiyonel)</label>
+          <select id="wz-sinif" value={form.sinif} onChange={(e) => updateField("sinif", e.target.value)}>
+            <option value="">— Belirtilmedi —</option>
+            <option value="A">{SINIF_LABEL.A}</option>
+            <option value="B">{SINIF_LABEL.B}</option>
+            <option value="C">{SINIF_LABEL.C}</option>
+          </select>
+        </div>
+
         <div className="field field-wide">
           <label htmlFor="wz-not">Not</label>
           <input id="wz-not" type="text" value={form.notMetni} onChange={(e) => updateField("notMetni", e.target.value)} />
@@ -169,6 +187,7 @@ export default function WarehouseZonesDashboard({ warehouses = [], zones, loadin
                 <tr>
                   <th>Depo</th>
                   <th>Bölüm</th>
+                  <th>Sınıf</th>
                   <th>Doluluk</th>
                   <th />
                 </tr>
@@ -182,6 +201,15 @@ export default function WarehouseZonesDashboard({ warehouses = [], zones, loadin
                       <td>
                         {z.kod}
                         {z.ad && <div className="muted">{z.ad}</div>}
+                      </td>
+                      <td>
+                        {z.sinif ? (
+                          <span className={`status-badge ${z.sinif === "A" ? "status-good" : z.sinif === "C" ? "status-muted" : "status-warning"}`}>
+                            {z.sinif}
+                          </span>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
                       </td>
                       <td>
                         {z.kapasite ? (
