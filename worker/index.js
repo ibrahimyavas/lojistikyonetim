@@ -13,6 +13,7 @@ import { handleShipmentsRoute } from "./shipments.js";
 import { handleWarehouseTransfersRoute } from "./warehouseTransfers.js";
 import { handleWarehouseZonesRoute } from "./warehouseZones.js";
 import { handlePalletsRoute } from "./pallets.js";
+import { handleDriverLocationsRoute, handleAdminLocationsRoute } from "./driverLocations.js";
 
 async function handleApi(request, env, url) {
   // Auth routes are public by definition: /api/auth/* (admin web panel,
@@ -24,9 +25,14 @@ async function handleApi(request, env, url) {
   const driverAuthResponse = await handleDriverAuthRoute(request, env, url.pathname);
   if (driverAuthResponse) return driverAuthResponse;
 
+  // Sürücü app'inin konum bildirme uç noktası - KENDİ Bearer token auth'unu
+  // taşıyor (requireDriverAuth, driverLocations.js içinde), admin cookie
+  // oturumu GEREKMİYOR - bu yüzden requireAuth'tan ÖNCE ele alınıyor.
+  const driverLocationsResponse = await handleDriverLocationsRoute(request, env, url.pathname);
+  if (driverLocationsResponse) return driverLocationsResponse;
+
   // Aşağıdaki route'ların hepsi admin panelinin (cookie) oturumunu
-  // gerektiriyor - sürücü app'inin kendi uç noktaları eklendiğinde onlar bu
-  // kontrolden ÖNCE, requireDriverAuth ile ayrı ele alınacak.
+  // gerektiriyor.
   const authError = await requireAuth(request, env);
   if (authError) return authError;
 
@@ -50,6 +56,9 @@ async function handleApi(request, env, url) {
 
   const palletsResponse = await handlePalletsRoute(request, env, url.pathname);
   if (palletsResponse) return palletsResponse;
+
+  const adminLocationsResponse = await handleAdminLocationsRoute(request, env, url.pathname);
+  if (adminLocationsResponse) return adminLocationsResponse;
 
   return json({ error: "Bulunamadı." }, { status: 404 });
 }

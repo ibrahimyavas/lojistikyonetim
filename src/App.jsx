@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import {
-  LogOut, Moon, Sun, Truck, Users, Warehouse, Route, ArrowRightLeft, Tag, Boxes, LayoutGrid,
+  LogOut, Moon, Sun, Truck, Users, Warehouse, Route, ArrowRightLeft, Tag, Boxes, LayoutGrid, MapPin,
   PanelLeft, PanelTop, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { useTheme } from "./hooks/useTheme.js";
@@ -19,6 +19,7 @@ import PalletsDashboard from "./components/PalletsDashboard.jsx";
 import ShipmentsDashboard from "./components/ShipmentsDashboard.jsx";
 import WarehouseTransfersDashboard from "./components/WarehouseTransfersDashboard.jsx";
 import LabelPrintDashboard from "./components/LabelPrintDashboard.jsx";
+import DriverLocationsDashboard from "./components/DriverLocationsDashboard.jsx";
 
 // Her yeni modül burada bir TABS girdisi + activeDashboard'da bir dal alır -
 // barkod-okuyucu ERP'sindeki aynı desen. `group`: "operasyon" (günlük
@@ -28,6 +29,7 @@ const TABS = [
   { id: "shipments", label: "Sevkiyat", icon: Route, group: "operasyon" },
   { id: "warehouseTransfers", label: "Depo Transferleri", icon: ArrowRightLeft, group: "operasyon" },
   { id: "pallets", label: "Paletler", icon: Boxes, group: "operasyon" },
+  { id: "locations", label: "Konum", icon: MapPin, group: "operasyon" },
   { id: "labels", label: "Etiket Bas", icon: Tag, group: "operasyon" },
   { id: "vehicles", label: "Araçlar", icon: Truck, group: "tanimlama" },
   { id: "drivers", label: "Sürücüler", icon: Users, group: "tanimlama" },
@@ -136,6 +138,7 @@ export default function App() {
       {view === "shipments" && <ShipmentsDashboard vehicles={vehicles} drivers={drivers} warehouses={warehouses} />}
       {view === "warehouseTransfers" && <WarehouseTransfersDashboard warehouses={warehouses} />}
       {view === "pallets" && <PalletsDashboard warehouses={warehouses} zones={zones} />}
+      {view === "locations" && <DriverLocationsDashboard />}
       {view === "labels" && <LabelPrintDashboard warehouses={warehouses} />}
       {view === "vehicles" && (
         <VehiclesDashboard

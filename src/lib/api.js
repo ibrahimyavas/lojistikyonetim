@@ -175,3 +175,17 @@ export async function fetchPalletMovements(palletId) {
   const data = await request(`/api/pallets/${encodeURIComponent(palletId)}/movements`);
   return data.movements;
 }
+
+// Sürücülerin son bildirdikleri konum - admin paneli (cookie auth).
+// Sürücü app'inin KENDİ konum bildirme uç noktası (POST /api/driver/location,
+// Bearer token) burada değil - Android app doğrudan çağıracak, web
+// panelinin bir parçası değil.
+export async function fetchDriverLocations() {
+  const data = await request("/api/driver-locations");
+  return data.locations;
+}
+
+export async function fetchDriverLocationHistory(driverId) {
+  const data = await request(`/api/driver-locations/${encodeURIComponent(driverId)}/history`);
+  return data.locations;
+}

@@ -9,6 +9,22 @@ export function trDate(iso) {
   return `${d}.${m}.${y}`;
 }
 
+// Epoch ms -> "az önce" / "5 dk önce" / "3 sa önce" / "2 gün önce" - konum
+// bildirimlerinin ne kadar güncel olduğunu göstermek için (bkz.
+// DriverLocationsDashboard). Bilerek kaba (yuvarlanmış) - saniye
+// hassasiyeti bu bağlamda gürültü.
+export function timeAgo(epochMs) {
+  if (!epochMs) return "-";
+  const diffSec = Math.round((Date.now() - epochMs) / 1000);
+  if (diffSec < 60) return "az önce";
+  const diffMin = Math.round(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} dk önce`;
+  const diffHour = Math.round(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} sa önce`;
+  const diffDay = Math.round(diffHour / 24);
+  return `${diffDay} gün önce`;
+}
+
 // String comparison works correctly for ISO "YYYY-MM-DD" dates - no Date
 // parsing/timezone ambiguity needed.
 export function isPastDate(iso) {
