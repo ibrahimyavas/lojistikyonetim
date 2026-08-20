@@ -7,9 +7,12 @@ function zoneRow(row) {
     kod: row.kod,
     ad: row.ad,
     kapasite: row.kapasite,
-    // Depoda (durum='depoda') olan ve bu bölüme yerleştirilmiş paletlerin
-    // miktar toplamı - AYRI bir sayaç sütunu YOK, her zaman pallets'tan
-    // CANLI hesaplanıyor ki iki tablo birbirinden asenkron sapmasın.
+    // Depoda (durum='depoda') olan ve bu bölüme yerleştirilmiş PALET SAYISI
+    // (miktar toplamı DEĞİL - paletlerin miktar/birim'i karışık olabilir,
+    // ör. bir palet 50 kg bir palet 30 adet, toplamak anlamsız bir sayı
+    // üretirdi; bir bölümün fiziksel kapasitesi kaç palet SIĞDIĞIdır).
+    // AYRI bir sayaç sütunu YOK, her zaman pallets'tan CANLI hesaplanıyor
+    // ki iki tablo birbirinden asenkron sapmasın.
     doluluk: row.doluluk,
     notMetni: row.not_metni,
     createdAt: row.created_at,
@@ -19,7 +22,7 @@ function zoneRow(row) {
 async function listZones(env) {
   const { results } = await env.DB.prepare(
     `SELECT z.*,
-            COALESCE((SELECT SUM(p.miktar) FROM pallets p WHERE p.zone_id = z.id AND p.durum = 'depoda'), 0) AS doluluk
+            (SELECT COUNT(*) FROM pallets p WHERE p.zone_id = z.id AND p.durum = 'depoda') AS doluluk
        FROM warehouse_zones z
       ORDER BY z.created_at DESC`
   ).all();

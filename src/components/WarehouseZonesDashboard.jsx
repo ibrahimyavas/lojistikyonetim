@@ -118,12 +118,13 @@ export default function WarehouseZonesDashboard({ warehouses = [], zones, loadin
         </div>
 
         <div className="field">
-          <label htmlFor="wz-kapasite">Kapasite (opsiyonel)</label>
+          <label htmlFor="wz-kapasite">Kapasite - kaç palet sığar (opsiyonel)</label>
           <input
             id="wz-kapasite"
             type="number"
-            inputMode="decimal"
-            step="0.01"
+            inputMode="numeric"
+            step="1"
+            min="0"
             value={form.kapasite}
             onChange={(e) => updateField("kapasite", e.target.value)}
           />
@@ -192,11 +193,11 @@ export default function WarehouseZonesDashboard({ warehouses = [], zones, loadin
                               />
                             </div>
                             <span className="muted">
-                              {z.doluluk} / {z.kapasite} (%{pct})
+                              {z.doluluk} / {z.kapasite} palet (%{pct})
                             </span>
                           </div>
                         ) : (
-                          <span className="muted">{z.doluluk} (kapasite belirtilmedi)</span>
+                          <span className="muted">{z.doluluk} palet (kapasite belirtilmedi)</span>
                         )}
                       </td>
                       <td className="row-actions">

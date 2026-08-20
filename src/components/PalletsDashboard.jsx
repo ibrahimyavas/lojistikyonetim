@@ -112,10 +112,26 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
     return { depoda, toplam: pallets.length };
   }, [pallets]);
 
+  // Kapasite (bkz. WarehouseZonesDashboard - artık palet SAYISI) burada
+  // ZORUNLU değil, sadece UYARIYOR - gerçek depoda geçici bir aşım fiziksel
+  // olarak mümkün olabiliyor, admin isterse yine de devam edebilir. Kapasite
+  // tanımlı değilse (kapasite=null) hiç kontrol yapılmıyor.
+  function checkZoneCapacity(zoneId) {
+    const zone = zones.find((z) => z.id === zoneId);
+    if (!zone || zone.kapasite == null) return true;
+    if (zone.doluluk + 1 > zone.kapasite) {
+      return window.confirm(
+        `${zone.kod} bölümü kapasitenin üstüne çıkacak (${zone.doluluk + 1} / ${zone.kapasite} palet). Yine de devam edilsin mi?`
+      );
+    }
+    return true;
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     const urunAdi = form.urunAdi.trim();
     if (!urunAdi) return setSubmitError("Ürün adı zorunlu.");
+    if (form.zoneId && !checkZoneCapacity(form.zoneId)) return;
 
     setSubmitting(true);
     setSubmitError(null);
@@ -146,6 +162,7 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
   }
 
   async function handleZoneChange(p, zoneId) {
+    if (zoneId && !checkZoneCapacity(zoneId)) return;
     await editPallet(p.id, { zoneId: zoneId || "", tarih: todayISO() });
   }
 
