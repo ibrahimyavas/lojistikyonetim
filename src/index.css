@@ -1,0 +1,270 @@
+/* Theme tokens. Bare :root holds the dark palette (default look). An
+   explicit [data-theme] - set by the toggle in the header, see
+   hooks/useTheme.js - wins over everything, in either direction. Until the
+   user ever touches the toggle, the OS's prefers-color-scheme decides.
+   Same token set as the barkod-okuyucu ERP project this was split off from,
+   so anything copied over from there keeps working unchanged. */
+:root {
+  --bg: #0b1120;
+  --panel: #131c31;
+  --panel-2: #1b2740;
+  --border: #253453;
+  --text: #e6ecf7;
+  --text-muted: #8fa0c2;
+  --accent: #22c55e;
+  --accent-dim: #14532d;
+  --accent-on-dim: #bbf7d0;
+  --danger: #ef4444;
+  --danger-text: #fca5a5;
+  --good: #22c55e;
+  --good-text: #bbf7d0;
+  --warning: #eab308;
+  --warning-text: #fde68a;
+  --info: #3b82f6;
+  --info-text: #93c5fd;
+  --radius: 12px;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f8fafc;
+    --panel: #ffffff;
+    --panel-2: #f1f5f9;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --accent: #16a34a;
+    --accent-dim: #dcfce7;
+    --accent-on-dim: #166534;
+    --danger: #dc2626;
+    --danger-text: #b91c1c;
+    --good: #16a34a;
+    --good-text: #15803d;
+    --warning: #ca8a04;
+    --warning-text: #854d0e;
+    --info: #2563eb;
+    --info-text: #1d4ed8;
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --panel-2: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --accent: #16a34a;
+  --accent-dim: #dcfce7;
+  --accent-on-dim: #166534;
+  --danger: #dc2626;
+  --danger-text: #b91c1c;
+  --good: #16a34a;
+  --good-text: #15803d;
+  --warning: #ca8a04;
+  --warning-text: #854d0e;
+  --info: #2563eb;
+  --info-text: #1d4ed8;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b1120;
+  --panel: #131c31;
+  --panel-2: #1b2740;
+  --border: #253453;
+  --text: #e6ecf7;
+  --text-muted: #8fa0c2;
+  --accent: #22c55e;
+  --accent-dim: #14532d;
+  --accent-on-dim: #bbf7d0;
+  --danger: #ef4444;
+  --danger-text: #fca5a5;
+  --good: #22c55e;
+  --good-text: #bbf7d0;
+  --warning: #eab308;
+  --warning-text: #fde68a;
+  --info: #3b82f6;
+  --info-text: #93c5fd;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: var(--text-muted);
+}
+
+.login-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 320px;
+  color: var(--accent);
+}
+
+.login-card h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.login-card input {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.login-card .submit-btn {
+  width: 100%;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 12px 12px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.app-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+}
+
+.app-header-title h1 {
+  font-size: 1.25rem;
+  margin: 0;
+  color: var(--text);
+}
+
+.app-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.icon-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-on-dim);
+}
+
+.icon-btn.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger-text);
+}
+
+.submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  color: var(--accent-on-dim);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-error {
+  color: var(--danger-text);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.empty-state {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 24px 12px;
+  font-size: 0.9rem;
+}
+
+.dashboard-hint {
+  margin: -6px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}

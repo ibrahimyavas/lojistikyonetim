@@ -1,0 +1,17 @@
+# `wrangler dev` reads secrets from `.dev.vars` (gitignored) for local
+# development. Copy this file to `.dev.vars` and fill in real values:
+#
+#   cp .dev.vars.example .dev.vars
+#
+# In production these are NOT set via this file - use:
+#   npx wrangler secret put AUTH_PASSWORD
+#   npx wrangler secret put SESSION_SECRET
+
+# The one shared password that unlocks the web panel. The Android app will
+# eventually authenticate differently (per-driver token) - see README.
+AUTH_PASSWORD=degistir-bunu
+
+# Random, long, secret string used to sign session cookies. Anyone who has
+# this can forge a valid login - generate a real one, e.g.:
+#   openssl rand -base64 32
+SESSION_SECRET=uzun-rastgele-bir-metin-buraya

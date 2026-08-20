@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lojistik",
+  "compatibility_date": "2026-08-20",
+  "main": "worker/index.js",
+  // The SPA build is served as static assets; the Worker only steps in for
+  // /api/* (see worker/index.js) and otherwise hands the request straight to
+  // env.ASSETS. "single-page-application" fallback means unknown non-API
+  // paths resolve to index.html instead of 404ing.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lojistik-db",
+      "database_id": "e038f5db-91cf-43fe-8ca2-7e157556b79d",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
