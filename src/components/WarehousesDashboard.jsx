@@ -156,7 +156,14 @@ export default function WarehousesDashboard({ warehouses, loading, error, addWar
                       <button className="icon-btn" onClick={() => startEdit(w)} aria-label="Düzenle" title="Düzenle">
                         <Pencil size={15} />
                       </button>
-                      <button className="icon-btn danger" onClick={() => removeWarehouse(w.id)} aria-label="Sil" title="Sil">
+                      <button
+                        className="icon-btn danger"
+                        onClick={() => {
+                          if (window.confirm(`${w.ad} silinsin mi? Bağlı depo bölümleri de silinir. Bu geri alınamaz.`)) removeWarehouse(w.id);
+                        }}
+                        aria-label="Sil"
+                        title="Sil"
+                      >
                         <Trash2 size={15} />
                       </button>
                     </td>

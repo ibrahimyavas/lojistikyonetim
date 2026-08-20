@@ -98,11 +98,18 @@ async function updateShipment(request, env, id) {
     return json({ error: "Geçersiz durum." }, { status: 400 });
   }
 
-  // Teslim edildi işaretlenince, elle girilmediyse gerçekleşen tarihi bugüne
-  // ayarla - "teslim edildi dedim ama tarihi unuttum" olmasın diye.
+  // Teslim edildi'ye YENİ geçişte, elle girilmediyse gerçekleşen tarihi
+  // bugüne ayarla - "teslim edildi dedim ama tarihi unuttum" olmasın diye.
+  // Mevcut durumu kontrol etmeden yapılırsa (eski hâl) zaten teslim edilmiş
+  // bir sevkiyatın form tam gönderiminde (ör. sadece notu düzeltmek için
+  // "Düzenle") her seferinde gerceklesen_tarih bugüne SIFIRLANIR - gerçek
+  // teslim tarihi sessizce kaybolurdu. Sadece GERÇEK bir geçişte dolduruyoruz.
   let gerceklesenTarih = body.gerceklesenTarih;
   if (body.durum === "teslim_edildi" && !gerceklesenTarih) {
-    gerceklesenTarih = new Date().toISOString().slice(0, 10);
+    const current = await env.DB.prepare("SELECT durum FROM shipments WHERE id = ?1").bind(id).first();
+    if (current && current.durum !== "teslim_edildi") {
+      gerceklesenTarih = new Date().toISOString().slice(0, 10);
+    }
   }
 
   const sets = [];

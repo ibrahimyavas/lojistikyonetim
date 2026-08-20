@@ -199,7 +199,14 @@ export default function VehiclesDashboard({ drivers = [], vehicles, loading, err
                       <button className="icon-btn" onClick={() => startEdit(v)} aria-label="Düzenle" title="Düzenle">
                         <Pencil size={15} />
                       </button>
-                      <button className="icon-btn danger" onClick={() => removeVehicle(v.id)} aria-label="Sil" title="Sil">
+                      <button
+                        className="icon-btn danger"
+                        onClick={() => {
+                          if (window.confirm(`${v.plaka} silinsin mi? Bu geri alınamaz.`)) removeVehicle(v.id);
+                        }}
+                        aria-label="Sil"
+                        title="Sil"
+                      >
                         <Trash2 size={15} />
                       </button>
                     </td>

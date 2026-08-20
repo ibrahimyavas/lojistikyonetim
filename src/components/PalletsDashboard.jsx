@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Boxes, Plus, Trash2, Search, LogOut, History, ArrowRightLeft } from "lucide-react";
+import { Boxes, Plus, Trash2, Search, LogOut, History, ArrowRightLeft, X } from "lucide-react";
 import { usePallets } from "../hooks/usePallets.js";
 import { todayISO, trDate } from "../lib/format.js";
 import DatePicker from "./DatePicker.jsx";
@@ -31,6 +31,19 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
   const [submitError, setSubmitError] = useState(null);
   const [query, setQuery] = useState("");
   const [showShipped, setShowShipped] = useState(false);
+  // Tarih (üretim tarihi) / miktar filtreleri veri girişi formundan AYRI -
+  // sonuç tablosunun üstünde.
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [miktarMin, setMiktarMin] = useState("");
+  const [miktarMax, setMiktarMax] = useState("");
+  const hasActiveFilters = Boolean(dateFrom || dateTo || miktarMin || miktarMax);
+  function clearFilters() {
+    setDateFrom("");
+    setDateTo("");
+    setMiktarMin("");
+    setMiktarMax("");
+  }
 
   const [movementsFor, setMovementsFor] = useState(null); // pallet obj
   const [movements, setMovements] = useState([]);
@@ -76,14 +89,23 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const min = miktarMin === "" ? null : Number(miktarMin);
+    const max = miktarMax === "" ? null : Number(miktarMax);
     return pallets.filter((p) => {
       if (!showShipped && p.durum === "sevk_edildi") return false;
-      if (!q) return true;
-      return [p.urunAdi, p.kod, p.partiNo, warehouseName(p.warehouseId), zoneLabel(p.zoneId)].some((v) =>
-        v?.toLowerCase().includes(q)
-      );
+      if (q) {
+        const matches = [p.urunAdi, p.kod, p.partiNo, warehouseName(p.warehouseId), zoneLabel(p.zoneId)].some((v) =>
+          v?.toLowerCase().includes(q)
+        );
+        if (!matches) return false;
+      }
+      if (dateFrom && (!p.uretimTarihi || p.uretimTarihi < dateFrom)) return false;
+      if (dateTo && (!p.uretimTarihi || p.uretimTarihi > dateTo)) return false;
+      if (min != null && (p.miktar == null || p.miktar < min)) return false;
+      if (max != null && (p.miktar == null || p.miktar > max)) return false;
+      return true;
     });
-  }, [pallets, query, showShipped, warehouseName, zoneLabel]);
+  }, [pallets, query, showShipped, warehouseName, zoneLabel, dateFrom, dateTo, miktarMin, miktarMax]);
 
   const stats = useMemo(() => {
     const depoda = pallets.filter((p) => p.durum === "depoda").length;
@@ -249,12 +271,36 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
           Sevk edilenleri de göster
         </label>
 
+        <div className="filter-row">
+          <div className="filter-field">
+            <label htmlFor="pl-filter-from">Üretim tarihi (başlangıç)</label>
+            <DatePicker id="pl-filter-from" value={dateFrom} onChange={setDateFrom} allowClear />
+          </div>
+          <div className="filter-field">
+            <label htmlFor="pl-filter-to">Üretim tarihi (bitiş)</label>
+            <DatePicker id="pl-filter-to" value={dateTo} onChange={setDateTo} allowClear />
+          </div>
+          <div className="filter-field">
+            <label htmlFor="pl-filter-min">Miktar (en az)</label>
+            <input id="pl-filter-min" type="number" inputMode="decimal" value={miktarMin} onChange={(e) => setMiktarMin(e.target.value)} />
+          </div>
+          <div className="filter-field">
+            <label htmlFor="pl-filter-max">Miktar (en çok)</label>
+            <input id="pl-filter-max" type="number" inputMode="decimal" value={miktarMax} onChange={(e) => setMiktarMax(e.target.value)} />
+          </div>
+          {hasActiveFilters && (
+            <button type="button" className="icon-btn" onClick={clearFilters}>
+              <X size={14} /> Filtreleri Temizle
+            </button>
+          )}
+        </div>
+
         {error && <p className="form-error">{error}</p>}
 
         {loading ? (
           <p className="empty-state">Yükleniyor…</p>
         ) : filtered.length === 0 ? (
-          <p className="empty-state">{pallets.length === 0 ? "Henüz palet kaydı yok." : "Aramayla eşleşen kayıt yok."}</p>
+          <p className="empty-state">{pallets.length === 0 ? "Henüz palet kaydı yok." : "Aramayla/filtreyle eşleşen kayıt yok."}</p>
         ) : (
           <div className="scan-table-scroll">
             <table className="scan-table">
@@ -309,7 +355,14 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
                       <button className="icon-btn" onClick={() => openMovements(p)} aria-label="Hareketler" title="Hareket Geçmişi">
                         <History size={15} />
                       </button>
-                      <button className="icon-btn danger" onClick={() => removePallet(p.id)} aria-label="Sil" title="Sil">
+                      <button
+                        className="icon-btn danger"
+                        onClick={() => {
+                          if (window.confirm(`${p.urunAdi} (${p.kod}) silinsin mi? Hareket geçmişi de silinir. Bu geri alınamaz.`)) removePallet(p.id);
+                        }}
+                        aria-label="Sil"
+                        title="Sil"
+                      >
                         <Trash2 size={15} />
                       </button>
                     </td>

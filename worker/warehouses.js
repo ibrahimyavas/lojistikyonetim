@@ -93,7 +93,24 @@ async function updateWarehouse(request, env, id) {
 }
 
 async function deleteWarehouse(env, id) {
-  await env.DB.prepare("DELETE FROM warehouses WHERE id = ?1").bind(id).run();
+  // warehouse_zones bu depoya CASCADE bağlı (siliniyorlar, pallets zaten
+  // ON DELETE SET NULL ile korunuyor - palet verisi kaybolmuyor, sadece
+  // depo/bölüm ataması boşalıyor). Ama shipments.teslim_depo_id ve
+  // warehouse_transfers.kaynak/hedef_depo_id CASCADE DEĞİL - bu depoya
+  // referans veren bir sevkiyat/transfer kaydı varsa D1 silmeyi reddeder
+  // (iş kaydı sessizce yetim kalmasın diye) - burada bunu dostça bir hataya
+  // çeviriyoruz.
+  try {
+    await env.DB.prepare("DELETE FROM warehouses WHERE id = ?1").bind(id).run();
+  } catch (err) {
+    if (/FOREIGN KEY constraint failed/i.test(err?.message || "")) {
+      return json(
+        { error: "Bu depo bir sevkiyat/transfer kaydında kullanılıyor - önce o kayıtları güncelleyin/silin." },
+        { status: 409 }
+      );
+    }
+    throw err;
+  }
   return json({ ok: true });
 }
 

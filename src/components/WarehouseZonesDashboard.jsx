@@ -203,7 +203,14 @@ export default function WarehouseZonesDashboard({ warehouses = [], zones, loadin
                         <button className="icon-btn" onClick={() => startEdit(z)} aria-label="Düzenle" title="Düzenle">
                           <Pencil size={15} />
                         </button>
-                        <button className="icon-btn danger" onClick={() => removeZone(z.id)} aria-label="Sil" title="Sil">
+                        <button
+                          className="icon-btn danger"
+                          onClick={() => {
+                            if (window.confirm(`${z.kod} bölümü silinsin mi? Bu geri alınamaz.`)) removeZone(z.id);
+                          }}
+                          aria-label="Sil"
+                          title="Sil"
+                        >
                           <Trash2 size={15} />
                         </button>
                       </td>

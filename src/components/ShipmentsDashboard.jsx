@@ -81,6 +81,14 @@ export default function ShipmentsDashboard({ vehicles = [], drivers = [], wareho
   const [query, setQuery] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [lastHit, setLastHit] = useState(null);
+  // Tarih filtresi veri girişi formundan AYRI - sonuç tablosunun üstünde.
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const hasActiveFilters = Boolean(dateFrom || dateTo);
+  function clearFilters() {
+    setDateFrom("");
+    setDateTo("");
+  }
 
   // "Canlı" (ID referanslı) bir QR okutulunca açılan bilgi kartı - bkz.
   // lib/qrPayload.js buildRouteRef/parseRouteRef. liveRecord her okutmada
@@ -172,13 +180,18 @@ export default function ShipmentsDashboard({ vehicles = [], drivers = [], wareho
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return shipments;
-    return shipments.filter((s) =>
-      [s.tarafAdi, s.urunAdi, s.barkod, vehicleLabel(s.aracId), driverLabel(s.surucuId)].some((v) =>
-        v?.toLowerCase().includes(q)
-      )
-    );
-  }, [shipments, query, vehicleLabel, driverLabel]);
+    return shipments.filter((s) => {
+      if (q) {
+        const matches = [s.tarafAdi, s.urunAdi, s.barkod, vehicleLabel(s.aracId), driverLabel(s.surucuId)].some(
+          (v) => v?.toLowerCase().includes(q)
+        );
+        if (!matches) return false;
+      }
+      if (dateFrom && (!s.planlananTarih || s.planlananTarih < dateFrom)) return false;
+      if (dateTo && (!s.planlananTarih || s.planlananTarih > dateTo)) return false;
+      return true;
+    });
+  }, [shipments, query, vehicleLabel, driverLabel, dateFrom, dateTo]);
 
   const groups = useMemo(() => groupByDate(filtered, (s) => s.planlananTarih), [filtered]);
 
@@ -404,12 +417,30 @@ export default function ShipmentsDashboard({ vehicles = [], drivers = [], wareho
           <input type="text" placeholder="Taraf, ürün, araç ya da sürücüde ara…" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
 
+        <div className="filter-row">
+          <div className="filter-field">
+            <label htmlFor="sh-filter-from">Planlanan tarih (başlangıç)</label>
+            <DatePicker id="sh-filter-from" value={dateFrom} onChange={setDateFrom} allowClear />
+          </div>
+          <div className="filter-field">
+            <label htmlFor="sh-filter-to">Planlanan tarih (bitiş)</label>
+            <DatePicker id="sh-filter-to" value={dateTo} onChange={setDateTo} allowClear />
+          </div>
+          {hasActiveFilters && (
+            <button type="button" className="icon-btn" onClick={clearFilters}>
+              <X size={14} /> Filtreleri Temizle
+            </button>
+          )}
+        </div>
+
         {error && <p className="form-error">{error}</p>}
 
         {loading ? (
           <p className="empty-state">Yükleniyor…</p>
         ) : filtered.length === 0 ? (
-          <p className="empty-state">{shipments.length === 0 ? "Henüz sevkiyat kaydı yok." : "Aramayla eşleşen kayıt yok."}</p>
+          <p className="empty-state">
+            {shipments.length === 0 ? "Henüz sevkiyat kaydı yok." : "Aramayla/filtreyle eşleşen kayıt yok."}
+          </p>
         ) : (
           <div className="scan-table-scroll">
             <table className="scan-table">
@@ -462,7 +493,14 @@ export default function ShipmentsDashboard({ vehicles = [], drivers = [], wareho
                           <button className="icon-btn" onClick={() => startEdit(s)} aria-label="Düzenle" title="Düzenle">
                             <Pencil size={15} />
                           </button>
-                          <button className="icon-btn danger" onClick={() => removeShipment(s.id)} aria-label="Sil" title="Sil">
+                          <button
+                            className="icon-btn danger"
+                            onClick={() => {
+                              if (window.confirm(`${s.tarafAdi} sevkiyatı silinsin mi? Bu geri alınamaz.`)) removeShipment(s.id);
+                            }}
+                            aria-label="Sil"
+                            title="Sil"
+                          >
                             <Trash2 size={15} />
                           </button>
                         </td>

@@ -59,6 +59,19 @@ export default function WarehouseTransfersDashboard({ warehouses = [] }) {
   const [query, setQuery] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [lastHit, setLastHit] = useState(null);
+  // Tarih/miktar filtreleri veri girişi formundan AYRI - sonuç tablosunun
+  // üstünde, arama kutusunun yanında duruyor.
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [miktarMin, setMiktarMin] = useState("");
+  const [miktarMax, setMiktarMax] = useState("");
+  const hasActiveFilters = Boolean(dateFrom || dateTo || miktarMin || miktarMax);
+  function clearFilters() {
+    setDateFrom("");
+    setDateTo("");
+    setMiktarMin("");
+    setMiktarMax("");
+  }
 
   const [liveRef, setLiveRef] = useState(null);
   const [liveRecord, setLiveRecord] = useState(null);
@@ -135,13 +148,22 @@ export default function WarehouseTransfersDashboard({ warehouses = [] }) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return transfers;
-    return transfers.filter((t) =>
-      [t.urunAdi, t.barkod, warehouseLabel(t.kaynakDepoId), warehouseLabel(t.hedefDepoId)].some((v) =>
-        v?.toLowerCase().includes(q)
-      )
-    );
-  }, [transfers, query, warehouseLabel]);
+    const min = miktarMin === "" ? null : Number(miktarMin);
+    const max = miktarMax === "" ? null : Number(miktarMax);
+    return transfers.filter((t) => {
+      if (q) {
+        const matches = [t.urunAdi, t.barkod, warehouseLabel(t.kaynakDepoId), warehouseLabel(t.hedefDepoId)].some(
+          (v) => v?.toLowerCase().includes(q)
+        );
+        if (!matches) return false;
+      }
+      if (dateFrom && (!t.tarih || t.tarih < dateFrom)) return false;
+      if (dateTo && (!t.tarih || t.tarih > dateTo)) return false;
+      if (min != null && (t.miktar == null || t.miktar < min)) return false;
+      if (max != null && (t.miktar == null || t.miktar > max)) return false;
+      return true;
+    });
+  }, [transfers, query, warehouseLabel, dateFrom, dateTo, miktarMin, miktarMax]);
 
   const groups = useMemo(() => groupByDate(filtered, (t) => t.tarih), [filtered]);
 
@@ -331,12 +353,38 @@ export default function WarehouseTransfersDashboard({ warehouses = [] }) {
           <input type="text" placeholder="Ürün, barkod ya da depoda ara…" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
 
+        <div className="filter-row">
+          <div className="filter-field">
+            <label htmlFor="wt-filter-from">Tarih (başlangıç)</label>
+            <DatePicker id="wt-filter-from" value={dateFrom} onChange={setDateFrom} allowClear />
+          </div>
+          <div className="filter-field">
+            <label htmlFor="wt-filter-to">Tarih (bitiş)</label>
+            <DatePicker id="wt-filter-to" value={dateTo} onChange={setDateTo} allowClear />
+          </div>
+          <div className="filter-field">
+            <label htmlFor="wt-filter-min">Miktar (en az)</label>
+            <input id="wt-filter-min" type="number" inputMode="decimal" value={miktarMin} onChange={(e) => setMiktarMin(e.target.value)} />
+          </div>
+          <div className="filter-field">
+            <label htmlFor="wt-filter-max">Miktar (en çok)</label>
+            <input id="wt-filter-max" type="number" inputMode="decimal" value={miktarMax} onChange={(e) => setMiktarMax(e.target.value)} />
+          </div>
+          {hasActiveFilters && (
+            <button type="button" className="icon-btn" onClick={clearFilters}>
+              <X size={14} /> Filtreleri Temizle
+            </button>
+          )}
+        </div>
+
         {error && <p className="form-error">{error}</p>}
 
         {loading ? (
           <p className="empty-state">Yükleniyor…</p>
         ) : filtered.length === 0 ? (
-          <p className="empty-state">{transfers.length === 0 ? "Henüz transfer kaydı yok." : "Aramayla eşleşen kayıt yok."}</p>
+          <p className="empty-state">
+            {transfers.length === 0 ? "Henüz transfer kaydı yok." : "Aramayla/filtreyle eşleşen kayıt yok."}
+          </p>
         ) : (
           <div className="scan-table-scroll">
             <table className="scan-table">
@@ -382,7 +430,14 @@ export default function WarehouseTransfersDashboard({ warehouses = [] }) {
                           <button className="icon-btn" onClick={() => startEdit(t)} aria-label="Düzenle" title="Düzenle">
                             <Pencil size={15} />
                           </button>
-                          <button className="icon-btn danger" onClick={() => removeTransfer(t.id)} aria-label="Sil" title="Sil">
+                          <button
+                            className="icon-btn danger"
+                            onClick={() => {
+                              if (window.confirm(`${t.urunAdi} transferi silinsin mi? Bu geri alınamaz.`)) removeTransfer(t.id);
+                            }}
+                            aria-label="Sil"
+                            title="Sil"
+                          >
                             <Trash2 size={15} />
                           </button>
                         </td>

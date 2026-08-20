@@ -183,7 +183,14 @@ export default function DriversDashboard({ drivers, loading, error, addDriver, e
                       <button className="icon-btn" onClick={() => startEdit(d)} aria-label="Düzenle" title="Düzenle">
                         <Pencil size={15} />
                       </button>
-                      <button className="icon-btn danger" onClick={() => removeDriver(d.id)} aria-label="Sil" title="Sil">
+                      <button
+                        className="icon-btn danger"
+                        onClick={() => {
+                          if (window.confirm(`${d.ad} silinsin mi? Bu geri alınamaz.`)) removeDriver(d.id);
+                        }}
+                        aria-label="Sil"
+                        title="Sil"
+                      >
                         <Trash2 size={15} />
                       </button>
                     </td>
