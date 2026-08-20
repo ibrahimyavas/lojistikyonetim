@@ -1,3 +1,21 @@
+/* "Optimizasyon" grubundaki dashboard'lar (Rota/VRP, 3D Yükleme, Slotting,
+   İkmal, e-POD) Tailwind utility class'larıyla yazıldı - bu iki satır
+   sadece o class'ları (text-*, bg-*, rounded-*, flex, dark: varyantı vb.)
+   üretir. BİLEREK sadece theme+utilities layer'ları alınıyor, "base"
+   (preflight/reset) layer'ı YOK - Tailwind'in global reset'i bu dosyadaki
+   elle yazılmış her şeyi (margin/font-size sıfırlamaları vb.) etkilemesin
+   diye. `dark:` varyantı bizim tema sistemimize (hooks/useTheme.js'in
+   <html data-theme="dark"> yazdığı) bağlandı - .dark class'ı değil.
+   Not: OS'un prefers-color-scheme'i (kullanıcı temayı hiç değiştirmediyse)
+   Tailwind dark: class'larını TETİKLEMİYOR, sadece elle koyu tema seçilince
+   çalışıyor - aşağıdaki custom-variant sadece [data-theme="dark"] arıyor.
+   Bu, elle yazılmış CSS'teki @media (prefers-color-scheme) davranışından
+   bilinçli olarak farklı; yeni dashboard'larda fark edilirse ileride
+   genişletilebilir. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* Theme tokens. Bare :root holds the dark palette (default look). An
    explicit [data-theme] - set by the toggle in the header, see
    hooks/useTheme.js - wins over everything, in either direction. Until the

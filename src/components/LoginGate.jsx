@@ -38,9 +38,6 @@ export default function LoginGate({ onSuccess }) {
         <button type="submit" className="submit-btn" disabled={submitting}>
           {submitting ? "Kontrol ediliyor…" : "Giriş Yap"}
         </button>
-        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: "4px 0 0", textAlign: "center" }}>
-          Varsayılan şifre: <code style={{ color: "var(--accent)" }}>admin</code>
-        </p>
       </form>
     </div>
   );

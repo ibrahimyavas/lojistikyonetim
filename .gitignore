@@ -4,3 +4,8 @@ dist
 *.local
 .wrangler
 .dev.vars
+# server.js'in yerel geliştirme için kullandığı sql.js dosya veritabanı -
+# gerçek veri Cloudflare D1'de yaşıyor, bu sadece yerel bir kopya/önbellek,
+# commit edilmemeli (halihazırda commit edilmiş data/lojistik.sqlite
+# geçmişte kalıyor, ama bundan sonra güncellenmeyecek).
+data/*.sqlite
