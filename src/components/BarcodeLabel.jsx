@@ -48,7 +48,14 @@ export default function BarcodeLabel({ barkod, urunAdi, format, qrPayload, nered
 
     if (format === "qr_code") {
       if (!canvasRef.current) return;
-      QRCode.toCanvas(canvasRef.current, qrPayload || barkod, { margin: 1, width: qrSize.px }).catch((err) =>
+      // margin: QR spesifikasyonunun önerdiği "sessiz bölge" (quiet zone)
+      // en az 4 modül - daha ince bir kenar boşluğu, dedektörün finder
+      // pattern'leri (köşe kareleri) bulmasını zorlaştırıp okuma
+      // güvenilirliğini gerçek anlamda düşürür, özellikle etiket
+      // yazıcısının baskı kalitesi mükemmel olmadığında. errorCorrectionLevel
+      // varsayılanı ('M', ~%15) yeterli - daha yükseği (Q/H) aynı fiziksel
+      // boyutta modülleri küçültüp tam tersi etki yapardı.
+      QRCode.toCanvas(canvasRef.current, qrPayload || barkod, { margin: 4, width: qrSize.px }).catch((err) =>
         setError(err?.message || "QR kod üretilemedi.")
       );
       return;

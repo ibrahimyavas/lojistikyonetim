@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useMemo, useState } from "react";
-import { ArrowRightLeft, PackageCheck, Plus, Pencil, Trash2, X, Search, QrCode, Check } from "lucide-react";
+import { ArrowRightLeft, PackageCheck, Plus, Pencil, Trash2, X, Search, QrCode, Check, Bug } from "lucide-react";
 import { useWarehouseTransfers } from "../hooks/useWarehouseTransfers.js";
 import { useCameraScanner } from "../hooks/useCameraScanner.js";
 import { QR_ONLY_FORMATS, resolveQrOnlyDetector } from "../lib/barcodeDetector.js";
@@ -59,6 +59,10 @@ export default function WarehouseTransfersDashboard({ warehouses = [] }) {
   const [query, setQuery] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [lastHit, setLastHit] = useState(null);
+  // "Hiç okumuyor / geç okuyor" şikayetlerini teşhis etmek için - açılınca
+  // kamera panelinde dedektöre TAM OLARAK giden kareyi küçük bir
+  // önizlemede gösteriyor, bkz. useCameraScanner.js getDetectSource.
+  const [debugOn, setDebugOn] = useState(false);
   // Tarih/miktar filtreleri veri girişi formundan AYRI - sonuç tablosunun
   // üstünde, arama kutusunun yanında duruyor.
   const [dateFrom, setDateFrom] = useState("");
@@ -134,6 +138,7 @@ export default function WarehouseTransfersDashboard({ warehouses = [] }) {
     formats: QR_ONLY_FORMATS,
     resolveDetector: resolveQrOnlyDetector,
     cropRegion: QR_CROP_REGION,
+    debug: debugOn,
     onDetect: handleQrDetect,
   });
 
@@ -260,10 +265,28 @@ export default function WarehouseTransfersDashboard({ warehouses = [] }) {
           <QrCode size={16} />
           {scannerOpen ? "Taramayı Kapat" : "QR ile Transfer Doldur"}
         </button>
+        {scannerOpen && (
+          <button
+            type="button"
+            className={`icon-btn labeled ${debugOn ? "active" : ""}`}
+            onClick={() => setDebugOn((v) => !v)}
+            title="Dedektörün gördüğü kareyi göster - 'hiç okumuyor/geç okuyor' sorununu teşhis etmek için"
+          >
+            <Bug size={16} />
+            Teşhis
+          </button>
+        )}
       </div>
 
       {scannerOpen && (
-        <CameraPanel camera={camera} cameraOn={scannerOpen} onToggleCamera={() => setScannerOpen(false)} scanMode="qr" lastHit={lastHit} />
+        <CameraPanel
+          camera={camera}
+          cameraOn={scannerOpen}
+          onToggleCamera={() => setScannerOpen(false)}
+          scanMode="qr"
+          lastHit={lastHit}
+          debugOn={debugOn}
+        />
       )}
 
       <form className="product-form" onSubmit={handleSubmit}>

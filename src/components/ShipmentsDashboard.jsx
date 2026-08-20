@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useMemo, useState } from "react";
-import { Route, PackageCheck, AlertTriangle, Plus, Pencil, Trash2, X, Search, QrCode, Check, ShieldCheck } from "lucide-react";
+import { Route, PackageCheck, AlertTriangle, Plus, Pencil, Trash2, X, Search, QrCode, Check, ShieldCheck, Bug } from "lucide-react";
 import { useShipments } from "../hooks/useShipments.js";
 import { useCameraScanner } from "../hooks/useCameraScanner.js";
 import { QR_ONLY_FORMATS, resolveQrOnlyDetector } from "../lib/barcodeDetector.js";
@@ -82,6 +82,12 @@ export default function ShipmentsDashboard({ vehicles = [], drivers = [], wareho
   const [query, setQuery] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [lastHit, setLastHit] = useState(null);
+  // "Hiç okumuyor / geç okuyor" şikayetlerini teşhis etmek için - açılınca
+  // kamera panelinde dedektöre TAM OLARAK giden kareyi (kırpma + düşük ışık
+  // güçlendirmesi uygulanmış hâliyle) küçük bir önizlemede gösteriyor, bkz.
+  // useCameraScanner.js getDetectSource. Varsayılan kapalı, üretimde bir
+  // maliyeti yok.
+  const [debugOn, setDebugOn] = useState(false);
   const [podShipment, setPodShipment] = useState(null);
   // Tarih filtresi veri girişi formundan AYRI - sonuç tablosunun üstünde.
   const [dateFrom, setDateFrom] = useState("");
@@ -163,6 +169,7 @@ export default function ShipmentsDashboard({ vehicles = [], drivers = [], wareho
     formats: QR_ONLY_FORMATS,
     resolveDetector: resolveQrOnlyDetector,
     cropRegion: QR_CROP_REGION,
+    debug: debugOn,
     onDetect: handleQrDetect,
   });
 
@@ -275,10 +282,28 @@ export default function ShipmentsDashboard({ vehicles = [], drivers = [], wareho
           <QrCode size={16} />
           {scannerOpen ? "Taramayı Kapat" : "QR ile Sevkiyat Doldur"}
         </button>
+        {scannerOpen && (
+          <button
+            type="button"
+            className={`icon-btn labeled ${debugOn ? "active" : ""}`}
+            onClick={() => setDebugOn((v) => !v)}
+            title="Dedektörün gördüğü kareyi göster - 'hiç okumuyor/geç okuyor' sorununu teşhis etmek için"
+          >
+            <Bug size={16} />
+            Teşhis
+          </button>
+        )}
       </div>
 
       {scannerOpen && (
-        <CameraPanel camera={camera} cameraOn={scannerOpen} onToggleCamera={() => setScannerOpen(false)} scanMode="qr" lastHit={lastHit} />
+        <CameraPanel
+          camera={camera}
+          cameraOn={scannerOpen}
+          onToggleCamera={() => setScannerOpen(false)}
+          scanMode="qr"
+          lastHit={lastHit}
+          debugOn={debugOn}
+        />
       )}
 
       <form className="product-form" onSubmit={handleSubmit}>
