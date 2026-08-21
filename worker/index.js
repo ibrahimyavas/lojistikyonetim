@@ -12,6 +12,7 @@ import { handleWarehousesRoute } from "./warehouses.js";
 import { handleShipmentsRoute } from "./shipments.js";
 import { handleWarehouseTransfersRoute } from "./warehouseTransfers.js";
 import { handleWarehouseZonesRoute } from "./warehouseZones.js";
+import { handleProductsRoute } from "./products.js";
 import { handlePalletsRoute } from "./pallets.js";
 import { handleDriverLocationsRoute, handleAdminLocationsRoute } from "./driverLocations.js";
 import { handleUsersRoute } from "./users.js";
@@ -49,6 +50,7 @@ const ROUTE_GROUPS = [
   { prefix: "/api/vehicles", access: { yonetici: "full", operator: "read" }, handler: handleVehiclesRoute },
   { prefix: "/api/warehouses", access: { yonetici: "full", operator: "read" }, handler: handleWarehousesRoute },
   { prefix: "/api/warehouse-zones", access: { yonetici: "full", operator: "read" }, handler: handleWarehouseZonesRoute },
+  { prefix: "/api/products", access: { yonetici: "full", operator: "read" }, handler: handleProductsRoute },
   { prefix: "/api/warehouse-transfers", access: { yonetici: "full", operator: "full" }, handler: handleWarehouseTransfersRoute },
   { prefix: "/api/pallets", access: { yonetici: "full", operator: "full" }, handler: handlePalletsRoute },
   { prefix: "/api/driver-locations", access: { yonetici: "full", operator: "full" }, handler: handleAdminLocationsRoute },

@@ -176,6 +176,23 @@ export function deleteWarehouseZone(id) {
   return request(`/api/warehouse-zones/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
+export async function fetchProducts() {
+  const data = await request("/api/products");
+  return data.products;
+}
+
+export function createProduct(product) {
+  return request("/api/products", withJsonBody("POST", product));
+}
+
+export function updateProduct(id, fields) {
+  return request(`/api/products/${encodeURIComponent(id)}`, withJsonBody("PATCH", fields));
+}
+
+export function deleteProduct(id) {
+  return request(`/api/products/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
 export async function fetchPallets() {
   const data = await request("/api/pallets");
   return data.pallets;

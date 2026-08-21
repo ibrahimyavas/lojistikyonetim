@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   LogOut, Moon, Sun, Truck, Users, Warehouse, Route, ArrowRightLeft, Tag, Boxes, LayoutGrid, MapPin, UserCog,
-  PanelLeft, PanelTop, PanelLeftClose, PanelLeftOpen, Navigation, Box, Layers, TrendingUp
+  PanelLeft, PanelTop, PanelLeftClose, PanelLeftOpen, Navigation, Box, Layers, TrendingUp, Package
 } from "lucide-react";
 import { useTheme } from "./hooks/useTheme.js";
 import { useNavLayout } from "./hooks/useNavLayout.js";
@@ -9,6 +9,7 @@ import { useDrivers } from "./hooks/useDrivers.js";
 import { useVehicles } from "./hooks/useVehicles.js";
 import { useWarehouses } from "./hooks/useWarehouses.js";
 import { useWarehouseZones } from "./hooks/useWarehouseZones.js";
+import { useProducts } from "./hooks/useProducts.js";
 import { fetchSession, logout } from "./lib/api.js";
 import LoginGate from "./components/LoginGate.jsx";
 import DriversDashboard from "./components/DriversDashboard.jsx";
@@ -25,6 +26,7 @@ import Packing3DDashboard from "./components/Packing3DDashboard.jsx";
 import WarehouseSlottingDashboard from "./components/WarehouseSlottingDashboard.jsx";
 import ReplenishmentDashboard from "./components/ReplenishmentDashboard.jsx";
 import UsersDashboard from "./components/UsersDashboard.jsx";
+import ProductsDashboard from "./components/ProductsDashboard.jsx";
 import DriverPortalDashboard from "./components/DriverPortalDashboard.jsx";
 
 // `roles`: bu sekmeyi hangi roller görebilir - bkz. worker/auth.js'teki üç
@@ -47,6 +49,7 @@ const TABS = [
   { id: "drivers", label: "Sürücüler", icon: Users, group: "tanimlama", roles: ["yonetici"] },
   { id: "warehouses", label: "Depolar", icon: Warehouse, group: "tanimlama", roles: ["yonetici"] },
   { id: "warehouseZones", label: "Depo Bölümleri", icon: LayoutGrid, group: "tanimlama", roles: ["yonetici"] },
+  { id: "products", label: "Ürünler", icon: Package, group: "tanimlama", roles: ["yonetici"] },
   { id: "users", label: "Kullanıcılar", icon: UserCog, group: "tanimlama", roles: ["yonetici"] },
 ];
 
@@ -91,6 +94,14 @@ export default function App() {
   } = useWarehouses(dataEnabled);
   const { zones, loading: zonesLoading, error: zonesError, addZone, editZone, removeZone } =
     useWarehouseZones(dataEnabled);
+  const {
+    products,
+    loading: productsLoading,
+    error: productsError,
+    addProduct,
+    editProduct,
+    removeProduct,
+  } = useProducts(dataEnabled);
 
   const visibleTabs = session ? TABS.filter((t) => t.roles.includes(session.role)) : [];
   const navGroups = GROUP_ORDER.map((g) => ({
@@ -191,7 +202,7 @@ export default function App() {
       {view === "replenishment" && <ReplenishmentDashboard />}
       {view === "shipments" && <ShipmentsDashboard vehicles={vehicles} drivers={drivers} warehouses={warehouses} />}
       {view === "warehouseTransfers" && <WarehouseTransfersDashboard warehouses={warehouses} />}
-      {view === "pallets" && <PalletsDashboard warehouses={warehouses} zones={zones} />}
+      {view === "pallets" && <PalletsDashboard warehouses={warehouses} zones={zones} products={products} />}
       {view === "locations" && <DriverLocationsDashboard />}
       {view === "labels" && <LabelPrintDashboard warehouses={warehouses} />}
       {view === "vehicles" && (
@@ -234,6 +245,16 @@ export default function App() {
           addZone={addZone}
           editZone={editZone}
           removeZone={removeZone}
+        />
+      )}
+      {view === "products" && (
+        <ProductsDashboard
+          products={products}
+          loading={productsLoading}
+          error={productsError}
+          addProduct={addProduct}
+          editProduct={editProduct}
+          removeProduct={removeProduct}
         />
       )}
       {view === "users" && <UsersDashboard />}

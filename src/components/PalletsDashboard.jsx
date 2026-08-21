@@ -25,7 +25,7 @@ const EMPTY_FORM = {
 // tek yerden yönetiyor. Liste sunucudan FIFO sırasıyla (en eski üretim
 // tarihi önce) geliyor - aynı üründen depoda birden fazla parti varsa,
 // hangisinin önce çıkması gerektiğini "FIFO" rozeti gösteriyor.
-export default function PalletsDashboard({ warehouses = [], zones = [] }) {
+export default function PalletsDashboard({ warehouses = [], zones = [], products = [] }) {
   const { pallets, loading, error, addPallet, editPallet, removePallet, fetchMovements } = usePallets();
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +56,11 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
   // etkilemiyor.
   const [zoneAutoFilled, setZoneAutoFilled] = useState(false);
 
+  // Miktar/birim ürün kataloğundan (bkz. ProductsDashboard) otomatik
+  // dolduğunda true - kullanıcı elle miktar/birim girerse false'a döner.
+  // Sadece rozet göstermek için, zoneAutoFilled ile aynı desen.
+  const [productAutoFilled, setProductAutoFilled] = useState(false);
+
   function updateField(field, value) {
     setForm((f) => {
       const next = { ...f, [field]: value };
@@ -63,7 +68,31 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
       return next;
     });
     if (field === "zoneId" || field === "warehouseId") setZoneAutoFilled(false);
+    if (field === "miktar" || field === "birim") setProductAutoFilled(false);
   }
+
+  const productByName = useMemo(() => {
+    const byName = new Map();
+    products.forEach((p) => byName.set(p.ad.trim().toLowerCase(), p));
+    return byName;
+  }, [products]);
+
+  // OTOMATIK MİKTAR/BİRİM ÖNERİSİ: ürün adı, ürün kataloğunda tam eşleşen
+  // bir kayda sahipse ve miktar/birim henüz elle girilmemişse, "bu üründen
+  // bir palete kaç tane sığar" (paletBasinaAdet) ve birimi otomatik
+  // doldurur. Katalogda kayıtlı olmayan (serbest metinle girilen) ürünler
+  // etkilenmez - hiçbir şey zorlanmaz.
+  useEffect(() => {
+    const product = productByName.get(form.urunAdi.trim().toLowerCase());
+    if (!product) return;
+    if (form.miktar || form.birim) return;
+    setForm((f) =>
+      f.miktar || f.birim
+        ? f
+        : { ...f, miktar: product.paletBasinaAdet != null ? String(product.paletBasinaAdet) : f.miktar, birim: product.birim || f.birim }
+    );
+    setProductAutoFilled(true);
+  }, [form.urunAdi, form.miktar, form.birim, productByName]);
 
   // OTOMATIK BÖLÜM ÖNERİSİ: ürün adı + depo girildiğinde ve bölüm henüz
   // seçilmemişken, ABC hız sınıfına ve mevcut doluluğa göre en uygun boş
@@ -78,6 +107,11 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
     setForm((f) => (f.zoneId || f.warehouseId !== suggestion.zone.warehouseId ? f : { ...f, zoneId: suggestion.zoneId }));
     setZoneAutoFilled(true);
   }, [form.urunAdi, form.warehouseId, form.zoneId, pallets, zones]);
+
+  const matchedProduct = useMemo(
+    () => productByName.get(form.urunAdi.trim().toLowerCase()) || null,
+    [productByName, form.urunAdi]
+  );
 
   const zoneSuggestionLabel = useMemo(() => {
     if (!zoneAutoFilled || !form.zoneId) return null;
@@ -179,6 +213,7 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
       });
       setForm({ ...EMPTY_FORM, warehouseId: form.warehouseId, zoneId: form.zoneId, tarih: form.tarih });
       setZoneAutoFilled(false);
+      setProductAutoFilled(false);
     } catch (err) {
       setSubmitError(err.message);
     } finally {
@@ -235,7 +270,19 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
       <form className="product-form" onSubmit={handleSubmit}>
         <div className="field">
           <label htmlFor="pl-urun">Ürün Adı *</label>
-          <input id="pl-urun" type="text" value={form.urunAdi} onChange={(e) => updateField("urunAdi", e.target.value)} required />
+          <input
+            id="pl-urun"
+            type="text"
+            list="pl-urun-katalog"
+            value={form.urunAdi}
+            onChange={(e) => updateField("urunAdi", e.target.value)}
+            required
+          />
+          <datalist id="pl-urun-katalog">
+            {products.map((p) => (
+              <option key={p.id} value={p.ad} />
+            ))}
+          </datalist>
         </div>
 
         <div className="field">
@@ -256,12 +303,29 @@ export default function PalletsDashboard({ warehouses = [], zones = [] }) {
         <div className="field">
           <label htmlFor="pl-miktar">Miktar</label>
           <input id="pl-miktar" type="number" inputMode="decimal" step="0.01" value={form.miktar} onChange={(e) => updateField("miktar", e.target.value)} />
+          {productAutoFilled && (form.miktar || form.birim) && (
+            <span
+              className="status-badge status-good"
+              style={{ cursor: "default", alignSelf: "flex-start" }}
+              title="Ürün kataloğundaki 'palet başına adet' değerinden otomatik dolduruldu, dilerseniz değiştirebilirsiniz."
+            >
+              <Sparkles size={12} style={{ marginRight: 4 }} /> Ürün kataloğundan önerildi
+            </span>
+          )}
         </div>
 
         <div className="field">
           <label htmlFor="pl-birim">Birim</label>
           <input id="pl-birim" type="text" placeholder="adet / kg / koli..." value={form.birim} onChange={(e) => updateField("birim", e.target.value)} />
         </div>
+
+        {matchedProduct && (matchedProduct.paletUzunlukCm || matchedProduct.paletGenislikCm || matchedProduct.paletYukseklikCm || matchedProduct.paletAgirlikKg) && (
+          <p className="dashboard-hint field-wide" style={{ margin: 0 }}>
+            Dolu palet boyutu (ürün kataloğundan): {matchedProduct.paletUzunlukCm ?? "?"} × {matchedProduct.paletGenislikCm ?? "?"} ×{" "}
+            {matchedProduct.paletYukseklikCm ?? "?"} cm
+            {matchedProduct.paletAgirlikKg ? ` · ~${matchedProduct.paletAgirlikKg} kg` : ""}
+          </p>
+        )}
 
         <div className="field">
           <label htmlFor="pl-depo">Depo</label>
